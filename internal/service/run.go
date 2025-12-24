@@ -58,7 +58,10 @@ func (s *Service) Run(ctx context.Context, alias string, out io.Writer) (*RunRes
 
 	env := mapToEnv(a.Run.Env)
 
-	userSpec := fmt.Sprintf("%d:%d", a.Run.UID, a.Run.GID)
+	userSpec := ""
+	if a.Run.UID > 0 && a.Run.GID > 0 {
+		userSpec = fmt.Sprintf("%d:%d", a.Run.UID, a.Run.GID)
+	}
 
 	resources := container.Resources{}
 	if a.Run.Resources.CPUs > 0 {

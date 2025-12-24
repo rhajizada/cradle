@@ -163,14 +163,13 @@ func (c *Config) Validate() error {
 		}
 
 		// Run validation
-		if a.Run.Username == "" {
-			return fmt.Errorf("aliases.%s.run.username: required", name)
-		}
-		if a.Run.UID <= 0 {
-			return fmt.Errorf("aliases.%s.run.uid: must be > 0", name)
-		}
-		if a.Run.GID <= 0 {
-			return fmt.Errorf("aliases.%s.run.gid: must be > 0", name)
+		if a.Run.UID != 0 || a.Run.GID != 0 {
+			if a.Run.UID <= 0 {
+				return fmt.Errorf("aliases.%s.run.uid: must be > 0 when set", name)
+			}
+			if a.Run.GID <= 0 {
+				return fmt.Errorf("aliases.%s.run.gid: must be > 0 when set", name)
+			}
 		}
 
 		// mounts basic validation

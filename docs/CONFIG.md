@@ -76,9 +76,10 @@ Exactly one of `pull` or `build` is required.
 
 Identity:
 
-- `username` (string, required) - informational; used by your image/useradd.
-- `uid` (int, required) - numeric uid.
-- `gid` (int, required) - numeric gid.
+- `username` (string, optional) - informational; used by your image/useradd.
+- `uid` (int, optional) - numeric uid; if set, `gid` must also be set.
+- `gid` (int, optional) - numeric gid; if set, `uid` must also be set.
+- If `uid`/`gid` are omitted, the container uses the image's default `USER`.
 
 I/O:
 

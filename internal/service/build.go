@@ -11,6 +11,8 @@ import (
 
 	"github.com/rhajizada/cradle/internal/config"
 
+	"github.com/containerd/containerd/v2/pkg/protobuf/proto"
+	controlapi "github.com/moby/buildkit/api/services/control"
 	"github.com/moby/moby/api/types/build"
 	"github.com/moby/moby/client"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -112,11 +114,12 @@ func parsePlatformList(specs []string) ([]ocispec.Platform, error) {
 }
 
 type buildMessage struct {
-	ID       string `json:"id,omitempty"`
-	Status   string `json:"status,omitempty"`
-	Progress string `json:"progress,omitempty"`
-	Stream   string `json:"stream,omitempty"`
-	Error    string `json:"error,omitempty"`
+	ID       string          `json:"id,omitempty"`
+	Status   string          `json:"status,omitempty"`
+	Progress string          `json:"progress,omitempty"`
+	Stream   string          `json:"stream,omitempty"`
+	Error    string          `json:"error,omitempty"`
+	Aux      json.RawMessage `json:"aux,omitempty"`
 }
 
 func renderDockerJSON(out io.Writer, in io.Reader) error {
@@ -125,6 +128,7 @@ func renderDockerJSON(out io.Writer, in io.Reader) error {
 	buf := make([]byte, 0, 64*1024)
 	scanner.Buffer(buf, 1024*1024)
 	last := map[string]string{}
+	lastTrace := ""
 
 	for scanner.Scan() {
 		line := scanner.Bytes()
@@ -145,6 +149,21 @@ func renderDockerJSON(out io.Writer, in io.Reader) error {
 		if msg.Stream != "" {
 			if err := writeString(out, style.prefixed(msg.Stream)); err != nil {
 				return err
+			}
+			continue
+		}
+		if msg.ID == "moby.buildkit.trace" && len(msg.Aux) > 0 {
+			lines, ok := decodeBuildkitTrace(msg.Aux)
+			if ok {
+				for _, line := range lines {
+					if line == "" || line == lastTrace {
+						continue
+					}
+					lastTrace = line
+					if err := writeString(out, style.line("🏗️", colorCyan, line)); err != nil {
+						return err
+					}
+				}
 			}
 			continue
 		}
@@ -220,6 +239,57 @@ func filterEmpty(parts []string) []string {
 		}
 	}
 	return out
+}
+
+func decodeBuildkitTrace(raw json.RawMessage) ([]string, bool) {
+	var dt []byte
+	if err := json.Unmarshal(raw, &dt); err != nil || len(dt) == 0 {
+		return nil, false
+	}
+	var sr controlapi.StatusResponse
+	if err := proto.Unmarshal(dt, &sr); err != nil {
+		return nil, false
+	}
+	lines := make([]string, 0)
+	for _, vtx := range sr.GetVertexes() {
+		name := strings.TrimSpace(vtx.GetName())
+		if name == "" {
+			continue
+		}
+		if vtx.GetCached() {
+			name += " (cached)"
+		}
+		if vtx.GetError() != "" {
+			name += " (error: " + strings.TrimSpace(vtx.GetError()) + ")"
+		}
+		lines = append(lines, name)
+	}
+	for _, log := range sr.GetLogs() {
+		text := string(log.GetMsg())
+		for _, line := range strings.Split(text, "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			lines = append(lines, line)
+		}
+	}
+	for _, warn := range sr.GetWarnings() {
+		short := strings.TrimSpace(string(warn.GetShort()))
+		if short != "" {
+			lines = append(lines, "warning: "+short)
+		}
+		for _, detail := range warn.GetDetail() {
+			line := strings.TrimSpace(string(detail))
+			if line != "" {
+				lines = append(lines, line)
+			}
+		}
+	}
+	if len(lines) == 0 {
+		return nil, false
+	}
+	return lines, true
 }
 
 func statusEmoji(status string) string {

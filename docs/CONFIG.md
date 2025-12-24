@@ -135,28 +135,21 @@ Other:
 ```yaml
 version: 1
 aliases:
-  ubuntu:
+  ubuntu24:
     image:
       build:
-        cwd: ./images/ubuntu
+        cwd: ./images/ubuntu2404
         dockerfile: Dockerfile
         args:
           USERNAME: ${USER}
-          UID: ${UID:-1000}
+          UID: ${UID}
     run:
-      username: ${USER:-user}
-      uid: ${UID:-1000}
-      gid: ${GID:-1000}
       workdir: /home/${USER}
-      env:
-        TERM: xterm-256color
-        COLORTERM: truecolor
-      cmd: ["/bin/bash", "-l"]
+      cmd: ["/bin/bash"]
       network: host
       auto_remove: true
-      attach: true
       mounts:
         - type: bind
-          source: ${HOME}
-          target: /home/${USER}
+          source: /home
+          target: /home
 ```

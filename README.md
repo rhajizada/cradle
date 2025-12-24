@@ -85,6 +85,4 @@ cradle run ubuntu
 ## Docs
 
 - [Config reference](docs/CONFIG.md)
-- [Config Schema](schemastore.json)
-- [Commands and flags](docs/COMMANDS.md)
-- [Examples](docs/EXAMPLES.md)
+

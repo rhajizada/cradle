@@ -93,8 +93,18 @@ func (s *Service) AliasInfo(name string) (AliasInfo, error) {
 }
 
 func (s *Service) Build(ctx context.Context, alias string, out io.Writer) error {
-	_, err := s.ensureImage(ctx, alias, out)
-	return err
+	a, ok := s.cfg.Aliases[alias]
+	if !ok {
+		return fmt.Errorf("unknown alias %q", alias)
+	}
+	if a.Image.Pull != nil {
+		ref := normalizeImageRef(a.Image.Pull.Ref)
+		return pullImage(ctx, s.cli, ref, out)
+	}
+	if a.Image.Build != nil {
+		return buildImage(ctx, s.cli, a.Image.Build, imageTag(alias), out)
+	}
+	return fmt.Errorf("alias %q has no image", alias)
 }
 
 func (s *Service) ensureImage(ctx context.Context, alias string, out io.Writer) (string, error) {

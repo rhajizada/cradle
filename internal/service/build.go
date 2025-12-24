@@ -1,15 +1,20 @@
 package service
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"strings"
 
 	"github.com/rhajizada/cradle/internal/config"
 
 	"github.com/moby/moby/api/types/build"
 	"github.com/moby/moby/client"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"golang.org/x/term"
 )
 
 func pullImage(ctx context.Context, cli *client.Client, ref string, out io.Writer) error {
@@ -19,8 +24,7 @@ func pullImage(ctx context.Context, cli *client.Client, ref string, out io.Write
 	}
 	defer resp.Close()
 
-	_, _ = io.Copy(out, resp)
-	return nil
+	return renderDockerJSON(out, resp)
 }
 
 func buildImage(ctx context.Context, cli *client.Client, b *config.BuildSpec, tag string, out io.Writer) error {
@@ -77,8 +81,7 @@ func buildImage(ctx context.Context, cli *client.Client, b *config.BuildSpec, ta
 	}
 	defer res.Body.Close()
 
-	_, _ = io.Copy(out, res.Body)
-	return nil
+	return renderDockerJSON(out, res.Body)
 }
 
 func parsePlatformList(specs []string) ([]ocispec.Platform, error) {
@@ -95,3 +98,155 @@ func parsePlatformList(specs []string) ([]ocispec.Platform, error) {
 	}
 	return platforms, nil
 }
+
+type buildMessage struct {
+	ID       string `json:"id,omitempty"`
+	Status   string `json:"status,omitempty"`
+	Progress string `json:"progress,omitempty"`
+	Stream   string `json:"stream,omitempty"`
+	Error    string `json:"error,omitempty"`
+}
+
+func renderDockerJSON(out io.Writer, in io.Reader) error {
+	style := outputStyle(out)
+	scanner := bufio.NewScanner(in)
+	buf := make([]byte, 0, 64*1024)
+	scanner.Buffer(buf, 1024*1024)
+	last := map[string]string{}
+
+	for scanner.Scan() {
+		line := scanner.Bytes()
+		if len(strings.TrimSpace(string(line))) == 0 {
+			continue
+		}
+
+		var msg buildMessage
+		if err := json.Unmarshal(line, &msg); err != nil {
+			fmt.Fprintln(out, string(line))
+			continue
+		}
+		if msg.Error != "" {
+			return fmt.Errorf(msg.Error)
+		}
+		if msg.Stream != "" {
+			fmt.Fprint(out, style.prefixed(msg.Stream))
+			continue
+		}
+		if msg.Status != "" {
+			key := msg.ID + "|" + msg.Status + "|" + msg.Progress
+			if last[msg.ID] == key {
+				continue
+			}
+			last[msg.ID] = key
+
+			label := labelFor(msg.ID, msg.Status)
+			if msg.Progress != "" {
+				fmt.Fprint(out, style.line("📦", colorYellow, label, msg.Status, msg.Progress))
+			} else if msg.ID != "" {
+				fmt.Fprint(out, style.line(statusEmoji(msg.Status), colorCyan, label, msg.Status))
+			} else {
+				fmt.Fprint(out, style.line(statusEmoji(msg.Status), colorGreen, msg.Status))
+			}
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+	return nil
+}
+
+type outStyle struct {
+	color bool
+}
+
+func outputStyle(out io.Writer) outStyle {
+	f, ok := out.(interface{ Fd() uintptr })
+	if !ok {
+		return outStyle{}
+	}
+	if v, ok := os.LookupEnv("NO_COLOR"); ok && v != "" {
+		return outStyle{}
+	}
+	return outStyle{color: term.IsTerminal(int(f.Fd()))}
+}
+
+func (s outStyle) prefixed(text string) string {
+	if !s.color {
+		return text
+	}
+	return colorDim + text + colorReset
+}
+
+func (s outStyle) line(emoji, color string, parts ...string) string {
+	text := strings.Join(filterEmpty(parts), " ")
+	if !s.color {
+		return fmt.Sprintf("%s %s\n", emoji, text)
+	}
+	return fmt.Sprintf("%s %s%s%s\n", emoji, color, text, colorReset)
+}
+
+func filterEmpty(parts []string) []string {
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if strings.TrimSpace(p) != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func statusEmoji(status string) string {
+	switch {
+	case strings.HasPrefix(status, "Pulling"):
+		return "📥"
+	case strings.HasPrefix(status, "Digest"):
+		return "🔍"
+	case strings.HasPrefix(status, "Status"):
+		return "✅"
+	default:
+		return "🔧"
+	}
+}
+
+func labelFor(id, status string) string {
+	if id == "" {
+		return ""
+	}
+	if looksNumeric(id) && strings.HasPrefix(status, "Pulling from") {
+		return ""
+	}
+	if looksLayerID(id) {
+		return "layer " + id + ":"
+	}
+	return id + ":"
+}
+
+func looksNumeric(s string) bool {
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return s != ""
+}
+
+func looksLayerID(s string) bool {
+	if len(s) < 12 {
+		return false
+	}
+	for _, r := range s {
+		if (r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+const (
+	colorReset  = "\x1b[0m"
+	colorDim    = "\x1b[2m"
+	colorGreen  = "\x1b[32m"
+	colorYellow = "\x1b[33m"
+	colorCyan   = "\x1b[36m"
+)

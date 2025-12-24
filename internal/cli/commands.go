@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -20,7 +21,7 @@ type appCtx struct {
 	renderer *render.Renderer
 }
 
-func newApp(cfgPath string, out *os.File) (*appCtx, error) {
+func newApp(cfgPath string, log *slog.Logger) (*appCtx, error) {
 	if cfgPath == "" {
 		cfgPath = defaultConfigPath()
 	}
@@ -35,11 +36,11 @@ func newApp(cfgPath string, out *os.File) (*appCtx, error) {
 	return &appCtx{
 		cfg:      cfg,
 		svc:      svc,
-		renderer: render.New(out),
+		renderer: render.New(log),
 	}, nil
 }
 
-func newAliasesCmd(cfgPath *string) *cobra.Command {
+func newAliasesCmd(cfgPath *string, log *slog.Logger) *cobra.Command {
 	return &cobra.Command{
 		Use:   "aliases",
 		Short: "List aliases",
@@ -47,7 +48,7 @@ func newAliasesCmd(cfgPath *string) *cobra.Command {
 			"ls",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			app, err := newApp(*cfgPath, os.Stdout)
+			app, err := newApp(*cfgPath, log)
 			if err != nil {
 				return err
 			}
@@ -60,13 +61,13 @@ func newAliasesCmd(cfgPath *string) *cobra.Command {
 	}
 }
 
-func newBuildCmd(cfgPath *string) *cobra.Command {
+func newBuildCmd(cfgPath *string, log *slog.Logger) *cobra.Command {
 	return &cobra.Command{
 		Use:   "build <alias|all>",
 		Short: "Build or pull images",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			app, err := newApp(*cfgPath, os.Stdout)
+			app, err := newApp(*cfgPath, log)
 			if err != nil {
 				return err
 			}
@@ -93,13 +94,13 @@ func newBuildCmd(cfgPath *string) *cobra.Command {
 	}
 }
 
-func newRunCmd(cfgPath *string) *cobra.Command {
+func newRunCmd(cfgPath *string, log *slog.Logger) *cobra.Command {
 	return &cobra.Command{
 		Use:   "run <alias>",
 		Short: "Run alias interactively",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			app, err := newApp(*cfgPath, os.Stdout)
+			app, err := newApp(*cfgPath, log)
 			if err != nil {
 				return err
 			}

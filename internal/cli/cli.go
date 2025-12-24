@@ -26,7 +26,7 @@ func newRootCmd(version string, log *slog.Logger) *cobra.Command {
 
 	root := &cobra.Command{
 		Use:           "cradle",
-		Short:         "cradle - build and run container aliases",
+		Short:         "Build and launch preconfigured Docker dev shells",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -41,7 +41,7 @@ func newRootCmd(version string, log *slog.Logger) *cobra.Command {
 	root.SetVersionTemplate("{{.Version}}\n")
 	root.Version = version
 
-	root.PersistentFlags().StringVarP(&cfgPath, "config", "c", "", "config file (default is XDG_CONFIG_HOME/cradle/config.yaml)")
+	root.PersistentFlags().StringVarP(&cfgPath, "config", "c", "", "config file (default is $XDG_CONFIG_HOME/cradle/config.yaml)")
 	root.Flags().BoolVarP(&showVersion, "version", "V", false, "print version")
 
 	root.AddCommand(newAliasesCmd(&cfgPath, log), newBuildCmd(&cfgPath, log), newRunCmd(&cfgPath, log))

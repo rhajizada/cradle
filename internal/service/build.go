@@ -17,17 +17,21 @@ import (
 	"golang.org/x/term"
 )
 
-func pullImage(ctx context.Context, cli *client.Client, ref string, out io.Writer) error {
+func pullImage(ctx context.Context, cli *client.Client, ref string, out io.Writer) (err error) {
 	resp, err := cli.ImagePull(ctx, ref, client.ImagePullOptions{})
 	if err != nil {
 		return err
 	}
-	defer resp.Close()
+	defer func() {
+		if cerr := resp.Close(); err == nil && cerr != nil {
+			err = cerr
+		}
+	}()
 
 	return renderDockerJSON(out, resp)
 }
 
-func buildImage(ctx context.Context, cli *client.Client, b *config.BuildSpec, tag string, out io.Writer) error {
+func buildImage(ctx context.Context, cli *client.Client, b *config.BuildSpec, tag string, out io.Writer) (err error) {
 	if b == nil {
 		return fmt.Errorf("missing build spec")
 	}
@@ -42,7 +46,11 @@ func buildImage(ctx context.Context, cli *client.Client, b *config.BuildSpec, ta
 	if err != nil {
 		return err
 	}
-	defer tar.Close()
+	defer func() {
+		if cerr := tar.Close(); err == nil && cerr != nil {
+			err = cerr
+		}
+	}()
 
 	buildArgs := map[string]*string{}
 	for k, v := range b.Args {
@@ -79,7 +87,11 @@ func buildImage(ctx context.Context, cli *client.Client, b *config.BuildSpec, ta
 	if err != nil {
 		return err
 	}
-	defer res.Body.Close()
+	defer func() {
+		if cerr := res.Body.Close(); err == nil && cerr != nil {
+			err = cerr
+		}
+	}()
 
 	return renderDockerJSON(out, res.Body)
 }
@@ -122,14 +134,18 @@ func renderDockerJSON(out io.Writer, in io.Reader) error {
 
 		var msg buildMessage
 		if err := json.Unmarshal(line, &msg); err != nil {
-			fmt.Fprintln(out, string(line))
+			if _, err := fmt.Fprintln(out, string(line)); err != nil {
+				return err
+			}
 			continue
 		}
 		if msg.Error != "" {
-			return fmt.Errorf(msg.Error)
+			return fmt.Errorf("%s", msg.Error)
 		}
 		if msg.Stream != "" {
-			fmt.Fprint(out, style.prefixed(msg.Stream))
+			if err := writeString(out, style.prefixed(msg.Stream)); err != nil {
+				return err
+			}
 			continue
 		}
 		if msg.Status != "" {
@@ -141,11 +157,17 @@ func renderDockerJSON(out io.Writer, in io.Reader) error {
 
 			label := labelFor(msg.ID, msg.Status)
 			if msg.Progress != "" {
-				fmt.Fprint(out, style.line("📦", colorYellow, label, msg.Status, msg.Progress))
+				if err := writeString(out, style.line("📦", colorYellow, label, msg.Status, msg.Progress)); err != nil {
+					return err
+				}
 			} else if msg.ID != "" {
-				fmt.Fprint(out, style.line(statusEmoji(msg.Status), colorCyan, label, msg.Status))
+				if err := writeString(out, style.line(statusEmoji(msg.Status), colorCyan, label, msg.Status)); err != nil {
+					return err
+				}
 			} else {
-				fmt.Fprint(out, style.line(statusEmoji(msg.Status), colorGreen, msg.Status))
+				if err := writeString(out, style.line(statusEmoji(msg.Status), colorGreen, msg.Status)); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -153,6 +175,11 @@ func renderDockerJSON(out io.Writer, in io.Reader) error {
 		return err
 	}
 	return nil
+}
+
+func writeString(out io.Writer, s string) error {
+	_, err := io.WriteString(out, s)
+	return err
 }
 
 type outStyle struct {

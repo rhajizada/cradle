@@ -66,18 +66,26 @@ func (h *Handler) Handle(_ context.Context, r slog.Record) error {
 }
 
 func (h *Handler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	cp := *h
-	cp.attrs = append(append([]slog.Attr{}, h.attrs...), attrs...)
-	return &cp
+	return &Handler{
+		out:    h.out,
+		level:  h.level,
+		color:  h.color,
+		attrs:  append(append([]slog.Attr{}, h.attrs...), attrs...),
+		groups: append([]string{}, h.groups...),
+	}
 }
 
 func (h *Handler) WithGroup(name string) slog.Handler {
 	if name == "" {
 		return h
 	}
-	cp := *h
-	cp.groups = append(append([]string{}, h.groups...), name)
-	return &cp
+	return &Handler{
+		out:    h.out,
+		level:  h.level,
+		color:  h.color,
+		attrs:  append([]slog.Attr{}, h.attrs...),
+		groups: append(append([]string{}, h.groups...), name),
+	}
 }
 
 func appendAttrs(b *strings.Builder, attrs []slog.Attr, groups []string, color bool) {

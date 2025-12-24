@@ -52,7 +52,11 @@ func newAliasesCmd(cfgPath *string, log *slog.Logger) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			defer app.svc.Close()
+			defer func() {
+				if err := app.svc.Close(); err != nil {
+					log.Warn("service close failed", "error", err)
+				}
+			}()
 
 			infos := app.svc.ListAliases()
 			app.renderer.Aliases(infos)
@@ -71,7 +75,11 @@ func newBuildCmd(cfgPath *string, log *slog.Logger) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			defer app.svc.Close()
+			defer func() {
+				if err := app.svc.Close(); err != nil {
+					log.Warn("service close failed", "error", err)
+				}
+			}()
 
 			target := args[0]
 			if target == "all" {
@@ -104,7 +112,11 @@ func newRunCmd(cfgPath *string, log *slog.Logger) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			defer app.svc.Close()
+			defer func() {
+				if err := app.svc.Close(); err != nil {
+					log.Warn("service close failed", "error", err)
+				}
+			}()
 
 			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 			defer stop()

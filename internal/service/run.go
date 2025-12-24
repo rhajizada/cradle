@@ -157,7 +157,9 @@ func (s *Service) AttachAndWait(ctx context.Context, opts AttachOptions) error {
 	if opts.TTY && term.IsTerminal(int(opts.Stdin.Fd())) {
 		oldState, err := term.MakeRaw(int(opts.Stdin.Fd()))
 		if err == nil {
-			defer term.Restore(int(opts.Stdin.Fd()), oldState)
+			defer func() {
+				_ = term.Restore(int(opts.Stdin.Fd()), oldState)
+			}()
 		}
 	}
 

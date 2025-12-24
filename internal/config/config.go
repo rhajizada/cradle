@@ -137,10 +137,6 @@ func LoadFile(path string) (*Config, error) {
 }
 
 func (c *Config) Validate() error {
-	if c.Version == 0 {
-		// let "0" mean "unspecified" if you want; otherwise enforce >=1
-	}
-
 	for name, a := range c.Aliases {
 		if a.Image.Pull == nil && a.Image.Build == nil {
 			return fmt.Errorf("aliases.%s.image: must specify either pull or build", name)
@@ -163,7 +159,6 @@ func (c *Config) Validate() error {
 			// default dockerfile
 			if a.Image.Build.Dockerfile == "" {
 				a.Image.Build.Dockerfile = "Dockerfile"
-				a.Image.Build = a.Image.Build // (not necessary; just explicit)
 			}
 		}
 

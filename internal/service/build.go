@@ -44,16 +44,6 @@ func buildImage(ctx context.Context, cli *client.Client, b *config.BuildSpec, ta
 		dockerfile = "Dockerfile"
 	}
 
-	tar, err := tarDir(contextDir)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if cerr := tar.Close(); err == nil && cerr != nil {
-			err = cerr
-		}
-	}()
-
 	buildArgs := map[string]*string{}
 	for k, v := range b.Args {
 		vv := v
@@ -85,17 +75,16 @@ func buildImage(ctx context.Context, cli *client.Client, b *config.BuildSpec, ta
 		Version: build.BuilderBuildKit,
 	}
 
-	res, err := cli.ImageBuild(ctx, tar, opts)
-	if err != nil {
+	if err := runImageBuild(ctx, cli, contextDir, dockerfile, opts, out); err != nil {
+		if strings.Contains(err.Error(), "no active sessions") {
+			opts.Version = build.BuilderV1
+			opts.Platforms = nil
+			return runImageBuild(ctx, cli, contextDir, dockerfile, opts, out)
+		}
 		return err
 	}
-	defer func() {
-		if cerr := res.Body.Close(); err == nil && cerr != nil {
-			err = cerr
-		}
-	}()
 
-	return renderDockerJSON(out, res.Body)
+	return nil
 }
 
 func parsePlatformList(specs []string) ([]ocispec.Platform, error) {
@@ -111,6 +100,31 @@ func parsePlatformList(specs []string) ([]ocispec.Platform, error) {
 		platforms = append(platforms, *p)
 	}
 	return platforms, nil
+}
+
+func runImageBuild(ctx context.Context, cli *client.Client, contextDir, dockerfile string, opts client.ImageBuildOptions, out io.Writer) (err error) {
+	tar, err := tarDir(contextDir)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if cerr := tar.Close(); err == nil && cerr != nil {
+			err = cerr
+		}
+	}()
+
+	opts.Dockerfile = dockerfile
+	res, err := cli.ImageBuild(ctx, tar, opts)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if cerr := res.Body.Close(); err == nil && cerr != nil {
+			err = cerr
+		}
+	}()
+
+	return renderDockerJSON(out, res.Body)
 }
 
 type buildMessage struct {

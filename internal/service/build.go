@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"strings"
 
@@ -13,6 +14,7 @@ import (
 
 	"github.com/containerd/containerd/v2/pkg/protobuf/proto"
 	controlapi "github.com/moby/buildkit/api/services/control"
+	"github.com/moby/buildkit/session"
 	"github.com/moby/moby/api/types/build"
 	"github.com/moby/moby/client"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -114,6 +116,29 @@ func runImageBuild(ctx context.Context, cli *client.Client, contextDir, dockerfi
 	}()
 
 	opts.Dockerfile = dockerfile
+
+	var sess *session.Session
+	var sessErrCh chan error
+	if opts.Version == build.BuilderBuildKit {
+		sess, err = session.NewSession(ctx, "")
+		if err != nil {
+			return err
+		}
+		opts.SessionID = sess.ID()
+		sessErrCh = make(chan error, 1)
+		go func() {
+			sessErrCh <- sess.Run(ctx, func(ctx context.Context, proto string, meta map[string][]string) (net.Conn, error) {
+				return cli.DialHijack(ctx, "/session", proto, meta)
+			})
+		}()
+		defer func() {
+			_ = sess.Close()
+			if serr := <-sessErrCh; serr != nil && err == nil {
+				err = serr
+			}
+		}()
+	}
+
 	res, err := cli.ImageBuild(ctx, tar, opts)
 	if err != nil {
 		return err

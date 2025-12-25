@@ -32,3 +32,7 @@ func (r *Renderer) BuildStart(info service.AliasInfo) {
 func (r *Renderer) RunStart(id string) {
 	r.log.Info("container started", "id", id)
 }
+
+func (r *Renderer) RunStop(id string) {
+	r.log.Info("container stopped", "id", id)
+}

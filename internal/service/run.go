@@ -2,16 +2,21 @@ package service
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/netip"
 	"os"
 	"os/signal"
+	"sort"
 	"strings"
 	"syscall"
 
 	"github.com/rhajizada/cradle/internal/config"
 
+	"github.com/containerd/errdefs"
 	"github.com/docker/go-units"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/mount"
@@ -35,6 +40,8 @@ type AttachOptions struct {
 	Stdout     io.Writer
 }
 
+const containerFingerprintLabel = "io.cradle.fingerprint"
+
 func (s *Service) Run(ctx context.Context, alias string, out io.Writer) (*RunResult, error) {
 	a, ok := s.cfg.Aliases[alias]
 	if !ok {
@@ -55,6 +62,22 @@ func (s *Service) Run(ctx context.Context, alias string, out io.Writer) (*RunRes
 	stdinOpen := boolDefault(a.Run.StdinOpen, true)
 	autoRemove := boolDefault(a.Run.AutoRemove, true)
 	attach := boolDefault(a.Run.Attach, true)
+
+	imageInfo, err := s.cli.ImageInspect(ctx, imageRef)
+	if err != nil {
+		return nil, err
+	}
+
+	fingerprint, err := runFingerprint(alias, createName, imageRef, imageInfo.ID, a.Run, tty, stdinOpen, autoRemove)
+	if err != nil {
+		return nil, err
+	}
+
+	if result, ok, err := s.tryReuseContainer(ctx, createName, fingerprint, autoRemove, attach, tty); err != nil {
+		return nil, err
+	} else if ok {
+		return result, nil
+	}
 
 	env := mapToEnv(a.Run.Env)
 
@@ -113,6 +136,9 @@ func (s *Service) Run(ctx context.Context, alias string, out io.Writer) (*RunRes
 		AttachStdout: true,
 		AttachStderr: true,
 		ExposedPorts: exposed,
+		Labels: map[string]string{
+			containerFingerprintLabel: fingerprint,
+		},
 	}
 
 	hostCfg.PortBindings = bindings
@@ -201,9 +227,143 @@ func (s *Service) AttachAndWait(ctx context.Context, opts AttachOptions) error {
 	}
 
 	if !opts.AutoRemove {
-		_, _ = s.cli.ContainerRemove(context.Background(), opts.ID, client.ContainerRemoveOptions{Force: true})
+		return nil
 	}
+	_, _ = s.cli.ContainerRemove(context.Background(), opts.ID, client.ContainerRemoveOptions{Force: true})
 	return nil
+}
+
+func (s *Service) tryReuseContainer(ctx context.Context, name, fingerprint string, autoRemove, attach, tty bool) (*RunResult, bool, error) {
+	ctr, err := s.cli.ContainerInspect(ctx, name, client.ContainerInspectOptions{})
+	if err != nil {
+		if errdefs.IsNotFound(err) {
+			return nil, false, nil
+		}
+		return nil, false, err
+	}
+
+	labels := map[string]string{}
+	if ctr.Container.Config != nil && ctr.Container.Config.Labels != nil {
+		labels = ctr.Container.Config.Labels
+	}
+
+	if labels[containerFingerprintLabel] != fingerprint {
+		if ctr.Container.State != nil && ctr.Container.State.Running {
+			_, _ = s.cli.ContainerStop(ctx, ctr.Container.ID, client.ContainerStopOptions{})
+		}
+		_, _ = s.cli.ContainerRemove(ctx, ctr.Container.ID, client.ContainerRemoveOptions{Force: true})
+		return nil, false, nil
+	}
+
+	if ctr.Container.State == nil || !ctr.Container.State.Running {
+		if _, err := s.cli.ContainerStart(ctx, ctr.Container.ID, client.ContainerStartOptions{}); err != nil {
+			return nil, false, err
+		}
+	}
+
+	return &RunResult{
+		ID:         ctr.Container.ID,
+		AutoRemove: autoRemove,
+		Attach:     attach,
+		TTY:        tty,
+	}, true, nil
+}
+
+type envKV struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type runFingerprintSpec struct {
+	Alias    string `json:"alias"`
+	Name     string `json:"name"`
+	ImageRef string `json:"image_ref"`
+	ImageID  string `json:"image_id"`
+	Run      struct {
+		Username   string               `json:"username"`
+		UID        int                  `json:"uid"`
+		GID        int                  `json:"gid"`
+		TTY        bool                 `json:"tty"`
+		StdinOpen  bool                 `json:"stdin_open"`
+		AutoRemove bool                 `json:"auto_remove"`
+		Hostname   string               `json:"hostname"`
+		Workdir    string               `json:"workdir"`
+		Env        []envKV              `json:"env"`
+		Entrypoint []string             `json:"entrypoint"`
+		Cmd        []string             `json:"cmd"`
+		Network    string               `json:"network"`
+		Ports      []string             `json:"ports"`
+		ExtraHosts []string             `json:"extra_hosts"`
+		Mounts     []config.MountSpec   `json:"mounts"`
+		Resources  config.ResourcesSpec `json:"resources"`
+		Privileged bool                 `json:"privileged"`
+		Restart    string               `json:"restart"`
+		Platform   string               `json:"platform"`
+	} `json:"run"`
+}
+
+func runFingerprint(alias, name, imageRef, imageID string, run config.RunSpec, tty, stdinOpen, autoRemove bool) (string, error) {
+	spec := runFingerprintSpec{
+		Alias:    alias,
+		Name:     name,
+		ImageRef: imageRef,
+		ImageID:  imageID,
+	}
+
+	envKeys := make([]string, 0, len(run.Env))
+	for k := range run.Env {
+		envKeys = append(envKeys, k)
+	}
+	sort.Strings(envKeys)
+	envList := make([]envKV, 0, len(envKeys))
+	for _, k := range envKeys {
+		envList = append(envList, envKV{Key: k, Value: run.Env[k]})
+	}
+
+	ports := normalizeTrimmedSlice(run.Ports)
+	extraHosts := normalizeTrimmedSlice(run.ExtraHosts)
+
+	spec.Run.Username = run.Username
+	spec.Run.UID = run.UID
+	spec.Run.GID = run.GID
+	spec.Run.TTY = tty
+	spec.Run.StdinOpen = stdinOpen
+	spec.Run.AutoRemove = autoRemove
+	spec.Run.Hostname = run.Hostname
+	spec.Run.Workdir = run.Workdir
+	spec.Run.Env = envList
+	spec.Run.Entrypoint = run.Entrypoint
+	spec.Run.Cmd = run.Cmd
+	spec.Run.Network = run.Network
+	spec.Run.Ports = ports
+	spec.Run.ExtraHosts = extraHosts
+	spec.Run.Mounts = run.Mounts
+	spec.Run.Resources = run.Resources
+	spec.Run.Privileged = run.Privileged
+	spec.Run.Restart = run.Restart
+	spec.Run.Platform = run.Platform
+
+	data, err := json.Marshal(spec)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:]), nil
+}
+
+func normalizeTrimmedSlice(in []string) []string {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(in))
+	for _, v := range in {
+		v = strings.TrimSpace(v)
+		if v == "" {
+			continue
+		}
+		out = append(out, v)
+	}
+	return out
 }
 
 func mapToEnv(env map[string]string) []string {

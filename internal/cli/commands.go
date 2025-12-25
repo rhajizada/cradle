@@ -147,3 +147,67 @@ func newRunCmd(cfgPath *string, log *slog.Logger) *cobra.Command {
 		},
 	}
 }
+
+func newStartCmd(cfgPath *string, log *slog.Logger) *cobra.Command {
+	return &cobra.Command{
+		Use:   "start <alias>",
+		Short: "Start alias container",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			app, err := newApp(*cfgPath, log)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if err := app.svc.Close(); err != nil {
+					log.Warn("service close failed", "error", err)
+				}
+			}()
+
+			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+			defer stop()
+
+			info, err := app.svc.AliasInfo(args[0])
+			if err != nil {
+				return err
+			}
+			app.renderer.BuildStart(info)
+
+			id, err := app.svc.Start(ctx, args[0], os.Stdout)
+			if err != nil {
+				return err
+			}
+			app.renderer.RunStart(id)
+			return nil
+		},
+	}
+}
+
+func newStopCmd(cfgPath *string, log *slog.Logger) *cobra.Command {
+	return &cobra.Command{
+		Use:   "stop <alias>",
+		Short: "Stop alias container",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			app, err := newApp(*cfgPath, log)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if err := app.svc.Close(); err != nil {
+					log.Warn("service close failed", "error", err)
+				}
+			}()
+
+			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+			defer stop()
+
+			id, err := app.svc.Stop(ctx, args[0])
+			if err != nil {
+				return err
+			}
+			app.renderer.RunStop(id)
+			return nil
+		},
+	}
+}

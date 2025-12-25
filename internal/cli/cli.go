@@ -44,7 +44,13 @@ func newRootCmd(version string, log *slog.Logger) *cobra.Command {
 	root.PersistentFlags().StringVarP(&cfgPath, "config", "c", "", "config file (default is $XDG_CONFIG_HOME/cradle/config.yaml)")
 	root.Flags().BoolVarP(&showVersion, "version", "V", false, "print version")
 
-	root.AddCommand(newAliasesCmd(&cfgPath, log), newBuildCmd(&cfgPath, log), newRunCmd(&cfgPath, log))
+	root.AddCommand(
+		newAliasesCmd(&cfgPath, log),
+		newBuildCmd(&cfgPath, log),
+		newRunCmd(&cfgPath, log),
+		newStartCmd(&cfgPath, log),
+		newStopCmd(&cfgPath, log),
+	)
 
 	return root
 }

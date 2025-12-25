@@ -36,7 +36,7 @@ func newApp(cfgPath string, log *slog.Logger) (*appCtx, error) {
 	return &appCtx{
 		cfg:      cfg,
 		svc:      svc,
-		renderer: render.New(log),
+		renderer: render.New(log, os.Stdout),
 	}, nil
 }
 

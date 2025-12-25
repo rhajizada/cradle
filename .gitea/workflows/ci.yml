@@ -31,7 +31,9 @@ jobs:
 
       - name: Check code formatting
         run: |
-          if [ -n "$(go tool gofumpt .)" ]; then
+          diff="$(go tool gofumpt -d .)"
+          if [ -n "$diff" ]; then
+            echo "$diff"
             exit 1
           fi
 

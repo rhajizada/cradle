@@ -1,6 +1,10 @@
 # Cradle
 
-Cradle is a lightweight CLI for jumping into preconfigured Docker environments. Define images and runtime settings in a YAML file, then build/pull, start, and attach with consistent mounts, env, and resources.
+![Go](https://img.shields.io/badge/Go-1.25-blue.svg)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=fff)
+![License](https://img.shields.io/badge/License-MIT-green.svg)
+
+**Cradle** is a lightweight CLI for jumping into preconfigured Docker environments. Define images and runtime settings in a YAML file, then build/pull, start, and attach with consistent mounts, env, and resources.
 
 ## Why Cradle
 
@@ -76,7 +80,6 @@ Defaults:
 - `run.stdin_open`: `true`
 - `run.attach`: `true`
 - `run.auto_remove`: `false`
-
 
 ## Docs & References
 

@@ -6,7 +6,7 @@
 
 **cradle** is a lightweight CLI for launching and attaching to predefined Docker containers. Define images and runtime settings in a YAML file, then build/pull, start, and attach with consistent mounts, env, and resources.
 
-## Why `cradle`
+## Why **cradle**
 
 - Single config for repeatable dev shells.
 - Pull or build images per alias.

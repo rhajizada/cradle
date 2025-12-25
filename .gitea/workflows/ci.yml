@@ -31,7 +31,7 @@ jobs:
 
       - name: Check code formatting
         run: |
-          if [ -n "$(gofmt -l .)" ]; then
+          if [ -n "$(go tool gofumpt .)" ]; then
             exit 1
           fi
 
@@ -61,7 +61,6 @@ jobs:
         run: |
           go build -ldflags="-s -w -X main.Version=$(git rev-parse --short HEAD)" -o bin/cradle
         env:
-          CGO_ENABLED: 1
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.arch }}
       - name: Upload

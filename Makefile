@@ -49,6 +49,11 @@ config:
 lint:
 	@golangci-lint run
 
+.PHONY: fmt
+## fmt: Format source code
+fmt:
+	@go tool gofumpt -w .
+
 .PHONY: test
 ## test: Run tests
 test:

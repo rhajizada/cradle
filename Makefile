@@ -54,6 +54,12 @@ lint:
 test:
 	@go tool gotestsum
 
+.PHONY: coverage
+## coverage: Generate test coverage report
+coverage:
+	@go tool gotestsum -- -coverprofile=cover.out
+	@go tool cover -func=coverage.out
+
 .PHONY: run
 ## run: Build and run in development mode
 run:

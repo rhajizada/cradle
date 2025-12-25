@@ -4,7 +4,7 @@
 ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=fff)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
-**Cradle** is a lightweight CLI for jumping into preconfigured Docker environments. Define images and runtime settings in a YAML file, then build/pull, start, and attach with consistent mounts, env, and resources.
+**Cradle** is a lightweight CLI for launching and attaching to predefined Docker containers. Define images and runtime settings in a YAML file, then build/pull, start, and attach with consistent mounts, env, and resources.
 
 ## Why Cradle
 

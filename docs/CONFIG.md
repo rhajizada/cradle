@@ -125,11 +125,11 @@ Identity:
 
 I/O:
 
-- `tty` (bool, optional) - default `true`.
+- `tty` (bool, optional) - default `false`.
   Example: `tty: true`
-- `stdin_open` (bool, optional) - default `true`.
+- `stdin_open` (bool, optional) - default `false`.
   Example: `stdin_open: true`
-- `attach` (bool, optional) - default `true`. If false, run detached.
+- `attach` (bool, optional) - default `false`. If false, run detached.
   Example: `attach: false`
 - `auto_remove` (bool, optional) - default `false`.
   Example: `auto_remove: false`

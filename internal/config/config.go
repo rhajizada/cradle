@@ -59,10 +59,10 @@ type RunSpec struct {
 	GID      int    `yaml:"gid"`
 
 	// UX defaults for interactive shells
-	TTY        *bool `yaml:"tty,omitempty"`         // default true if nil
-	StdinOpen  *bool `yaml:"stdin_open,omitempty"`  // default true if nil
-	AutoRemove *bool `yaml:"auto_remove,omitempty"` // default true if nil
-	Attach     *bool `yaml:"attach,omitempty"`      // default true if nil
+	TTY        *bool `yaml:"tty,omitempty"`         // default false if nil
+	StdinOpen  *bool `yaml:"stdin_open,omitempty"`  // default false if nil
+	AutoRemove *bool `yaml:"auto_remove,omitempty"` // default false if nil
+	Attach     *bool `yaml:"attach,omitempty"`      // default false if nil
 
 	Name     string `yaml:"name,omitempty"`     // optional; else generated
 	Hostname string `yaml:"hostname,omitempty"` // optional

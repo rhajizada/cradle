@@ -38,6 +38,9 @@ aliases:
         ref: ubuntu:24.04
     run:
       cmd: ["/bin/bash"]
+      tty: true
+      stdin_open: true
+      attach: true
       auto_remove: false
 ```
 
@@ -76,9 +79,9 @@ Essentials:
 Defaults:
 
 - `image.build.dockerfile`: `Dockerfile`
-- `run.tty`: `true`
-- `run.stdin_open`: `true`
-- `run.attach`: `true`
+- `run.tty`: `false`
+- `run.stdin_open`: `false`
+- `run.attach`: `false`
 - `run.auto_remove`: `false`
 
 ## Docs & References

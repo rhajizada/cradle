@@ -58,10 +58,10 @@ func (s *Service) Run(ctx context.Context, alias string, out io.Writer) (*RunRes
 		createName = fmt.Sprintf("cradle-%s", alias)
 	}
 
-	tty := boolDefault(a.Run.TTY, true)
-	stdinOpen := boolDefault(a.Run.StdinOpen, true)
+	tty := boolDefault(a.Run.TTY, false)
+	stdinOpen := boolDefault(a.Run.StdinOpen, false)
 	autoRemove := boolDefault(a.Run.AutoRemove, false)
-	attach := boolDefault(a.Run.Attach, true)
+	attach := boolDefault(a.Run.Attach, false)
 
 	imageInfo, err := s.cli.ImageInspect(ctx, imageRef)
 	if err != nil {

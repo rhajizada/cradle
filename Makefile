@@ -41,7 +41,7 @@ install: build
 config:
 	@mkdir -p $(CONFIG_DIR)
 	@cp -R ./examples/. $(CONFIG_DIR)/
-	@echo "Cpied example configuration to '$(CONFIG_DIR)'."
+	@echo "Copied example configuration to '$(CONFIG_DIR)'."
 
 
 .PHONY: lint

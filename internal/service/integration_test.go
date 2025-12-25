@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,65 +17,18 @@ import (
 	"github.com/moby/moby/client"
 )
 
-func dockerAvailable() error {
-	host := os.Getenv("DOCKER_HOST")
-	if host == "" {
-		const socketPath = "/var/run/docker.sock"
-		info, err := os.Stat(socketPath)
-		if err != nil {
-			return fmt.Errorf("docker socket not found at %s", socketPath)
-		}
-		if info.Mode()&os.ModeSocket == 0 {
-			return fmt.Errorf("docker socket not a unix socket: %s", socketPath)
-		}
-		return nil
-	}
-
-	parsed, err := url.Parse(host)
-	if err != nil {
-		return fmt.Errorf("invalid DOCKER_HOST %q: %v", host, err)
-	}
-
-	switch parsed.Scheme {
-	case "unix":
-		socketPath := parsed.Path
-		if socketPath == "" {
-			socketPath = parsed.Host
-		}
-		info, err := os.Stat(socketPath)
-		if err != nil {
-			return fmt.Errorf("docker socket not found at %s", socketPath)
-		}
-		if info.Mode()&os.ModeSocket == 0 {
-			return fmt.Errorf("docker socket not a unix socket: %s", socketPath)
-		}
-		return nil
-	case "tcp", "http", "https":
-		addr := parsed.Host
-		if addr == "" {
-			addr = parsed.Path
-		}
-		conn, err := net.DialTimeout("tcp", addr, 2*time.Second)
-		if err != nil {
-			return fmt.Errorf("docker tcp not reachable at %s: %v", addr, err)
-		}
-		_ = conn.Close()
-		return nil
-	default:
-		return fmt.Errorf("unsupported DOCKER_HOST scheme %q", parsed.Scheme)
-	}
-}
-
 func requireDocker(t *testing.T) *client.Client {
 	t.Helper()
-
-	if err := dockerAvailable(); err != nil {
-		t.Skipf("docker not available: %v", err)
-	}
 
 	cli, err := client.New(client.FromEnv)
 	if err != nil {
 		t.Skipf("docker client unavailable: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if _, err := cli.Ping(ctx, client.PingOptions{}); err != nil {
+		t.Skipf("docker not available: %v", err)
 	}
 	return cli
 }

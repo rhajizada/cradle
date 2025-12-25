@@ -34,33 +34,43 @@ func (r *Renderer) ListStatuses(items []service.AliasStatus) {
 	}
 
 	maxName := len("ALIAS")
-	maxImage := len("IMAGE")
-	maxContainer := len("CONTAINER")
+	maxImageRef := len("IMAGE")
+	maxContainerName := len("CONTAINER")
+	maxImageStatus := len("STATUS")
+	maxContainerStatus := len("STATUS")
 	for _, item := range items {
 		if len(item.Name) > maxName {
 			maxName = len(item.Name)
 		}
-		image := fmt.Sprintf("%s %s", item.ImageRef, imageStatusLabel(item.ImagePresent))
-		if len(image) > maxImage {
-			maxImage = len(image)
+		if len(item.ImageRef) > maxImageRef {
+			maxImageRef = len(item.ImageRef)
 		}
-		container := fmt.Sprintf("%s %s", item.ContainerName, containerStatusLabel(item))
-		if len(container) > maxContainer {
-			maxContainer = len(container)
+		if len(item.ContainerName) > maxContainerName {
+			maxContainerName = len(item.ContainerName)
+		}
+		if l := len(imageStatusLabel(item.ImagePresent)); l > maxImageStatus {
+			maxImageStatus = l
+		}
+		if l := len(containerStatusLabel(item)); l > maxContainerStatus {
+			maxContainerStatus = l
 		}
 	}
 
 	header := fmt.Sprintf(
-		"%-*s  %-*s  %-*s\n",
+		"%-*s  %-*s  %-*s  %-*s  %-*s\n",
 		maxName, "ALIAS",
-		maxImage, "IMAGE",
-		maxContainer, "CONTAINER",
+		maxImageRef, "IMAGE",
+		maxImageStatus, "STATUS",
+		maxContainerName, "CONTAINER",
+		maxContainerStatus, "STATUS",
 	)
 	divider := fmt.Sprintf(
-		"%-*s  %-*s  %-*s\n",
+		"%-*s  %-*s  %-*s  %-*s  %-*s\n",
 		maxName, strings.Repeat("-", maxName),
-		maxImage, strings.Repeat("-", maxImage),
-		maxContainer, strings.Repeat("-", maxContainer),
+		maxImageRef, strings.Repeat("-", maxImageRef),
+		maxImageStatus, strings.Repeat("-", maxImageStatus),
+		maxContainerName, strings.Repeat("-", maxContainerName),
+		maxContainerStatus, strings.Repeat("-", maxContainerStatus),
 	)
 
 	fmt.Fprint(r.out, header)
@@ -68,13 +78,17 @@ func (r *Renderer) ListStatuses(items []service.AliasStatus) {
 	for _, item := range items {
 		fmt.Fprintf(
 			r.out,
-			"%-*s  %-*s  %-*s\n",
+			"%-*s  %-*s  %-*s  %-*s  %-*s\n",
 			maxName,
 			item.Name,
-			maxImage,
-			fmt.Sprintf("%s %s", item.ImageRef, imageStatusLabel(item.ImagePresent)),
-			maxContainer,
-			fmt.Sprintf("%s %s", item.ContainerName, containerStatusLabel(item)),
+			maxImageRef,
+			item.ImageRef,
+			maxImageStatus,
+			imageStatusLabel(item.ImagePresent),
+			maxContainerName,
+			item.ContainerName,
+			maxContainerStatus,
+			containerStatusLabel(item),
 		)
 	}
 }
@@ -103,11 +117,11 @@ func containerStatusLabel(item service.AliasStatus) string {
 	}
 	switch item.ContainerStatus {
 	case "running":
-		return "🟢"
+		return "▶️"
 	case "exited":
-		return "🟡"
+		return "⛔️"
 	case "created":
-		return "⚪"
+		return "✅"
 	case "paused":
 		return "⏸️"
 	case "restarting":

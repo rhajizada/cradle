@@ -29,7 +29,7 @@ func (r *Renderer) BuildStart(info service.AliasInfo) {
 
 func (r *Renderer) ListStatuses(items []service.AliasStatus) {
 	if len(items) == 0 {
-		fmt.Fprintln(r.out, "No aliases found.")
+		_, _ = fmt.Fprintln(r.out, "No aliases found.")
 		return
 	}
 
@@ -73,10 +73,10 @@ func (r *Renderer) ListStatuses(items []service.AliasStatus) {
 		maxContainerStatus, strings.Repeat("-", maxContainerStatus),
 	)
 
-	fmt.Fprint(r.out, header)
-	fmt.Fprint(r.out, divider)
+	_, _ = fmt.Fprint(r.out, header)
+	_, _ = fmt.Fprint(r.out, divider)
 	for _, item := range items {
-		fmt.Fprintf(
+		_, _ = fmt.Fprintf(
 			r.out,
 			"%-*s  %-*s  %-*s  %-*s  %-*s\n",
 			maxName,

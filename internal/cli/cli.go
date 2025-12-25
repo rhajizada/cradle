@@ -46,6 +46,7 @@ func newRootCmd(version string, log *slog.Logger) *cobra.Command {
 
 	root.AddCommand(
 		newBuildCmd(&cfgPath, log),
+		newLsCmd(&cfgPath, log),
 		newRunCmd(&cfgPath, log),
 		newStopCmd(&cfgPath, log),
 	)

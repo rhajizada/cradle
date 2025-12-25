@@ -60,7 +60,7 @@ func (s *Service) Run(ctx context.Context, alias string, out io.Writer) (*RunRes
 
 	tty := boolDefault(a.Run.TTY, true)
 	stdinOpen := boolDefault(a.Run.StdinOpen, true)
-	autoRemove := boolDefault(a.Run.AutoRemove, true)
+	autoRemove := boolDefault(a.Run.AutoRemove, false)
 	attach := boolDefault(a.Run.Attach, true)
 
 	imageInfo, err := s.cli.ImageInspect(ctx, imageRef)

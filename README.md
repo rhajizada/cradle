@@ -33,7 +33,9 @@ cradle [--config <path>] <command>
 Commands:
 
 - `build <alias|all>` - pull or build images
+- `ls` - list aliases with image/container status
 - `run <alias>` - run alias interactively
+- `stop <alias>` - stop alias container
 
 ## Config
 
@@ -48,7 +50,7 @@ Defaults in config:
 - `run.tty`: `true`
 - `run.stdin_open`: `true`
 - `run.attach`: `true`
-- `run.auto_remove`: `true`
+- `run.auto_remove`: `false`
 - All other optional strings default to empty, booleans to `false`, lists/maps to empty.
 
 Config supports environment variable substitution (see `docs/CONFIG.md`).
@@ -71,7 +73,7 @@ aliases:
       cmd: ["/bin/bash"]
       tty: true
       stdin_open: true
-      auto_remove: true
+      auto_remove: false
       network: host
 ```
 

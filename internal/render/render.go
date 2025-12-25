@@ -23,6 +23,21 @@ func (r *Renderer) BuildStart(info service.AliasInfo) {
 	}
 }
 
+func (r *Renderer) ListStatuses(items []service.AliasStatus) {
+	for _, item := range items {
+		r.log.Info(
+			"alias",
+			"name", item.Name,
+			"kind", item.Kind,
+			"image", item.ImageRef,
+			"image_present", item.ImagePresent,
+			"container", item.ContainerName,
+			"container_present", item.ContainerPresent,
+			"container_status", item.ContainerStatus,
+		)
+	}
+}
+
 func (r *Renderer) RunStart(id string) {
 	r.log.Info("container started", "id", id)
 }

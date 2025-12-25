@@ -77,6 +77,31 @@ func newBuildCmd(cfgPath *string, log *slog.Logger) *cobra.Command {
 	}
 }
 
+func newLsCmd(cfgPath *string, log *slog.Logger) *cobra.Command {
+	return &cobra.Command{
+		Use:   "ls",
+		Short: "List aliases and status",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			app, err := newApp(*cfgPath, log)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if err := app.svc.Close(); err != nil {
+					log.Warn("service close failed", "error", err)
+				}
+			}()
+
+			items, err := app.svc.ListStatuses(cmd.Context())
+			if err != nil {
+				return err
+			}
+			app.renderer.ListStatuses(items)
+			return nil
+		},
+	}
+}
+
 func newRunCmd(cfgPath *string, log *slog.Logger) *cobra.Command {
 	return &cobra.Command{
 		Use:   "run <alias>",

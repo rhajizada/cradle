@@ -1,5 +1,6 @@
 # cradle
 
+[![CI](https://github.com/rhajizada/cradle/actions/workflows/ci.yml/badge.svg)](https://github.com/rhajizada/donezo/actions/workflows/ci.yml)
 ![Go](https://img.shields.io/badge/Go-1.25-blue.svg)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=fff)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)

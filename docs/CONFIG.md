@@ -86,7 +86,7 @@ I/O:
 - `tty` (bool, optional) - default `true`.
 - `stdin_open` (bool, optional) - default `true`.
 - `attach` (bool, optional) - default `true`. If false, run detached.
-- `auto_remove` (bool, optional) - default `true`.
+- `auto_remove` (bool, optional) - default `false`.
 
 Identity and hostname:
 

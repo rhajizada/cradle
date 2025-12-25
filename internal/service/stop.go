@@ -3,19 +3,10 @@ package service
 import (
 	"context"
 	"fmt"
-	"io"
 
 	"github.com/containerd/errdefs"
 	"github.com/moby/moby/client"
 )
-
-func (s *Service) Start(ctx context.Context, alias string, out io.Writer) (string, error) {
-	result, err := s.Run(ctx, alias, out)
-	if err != nil {
-		return "", err
-	}
-	return result.ID, nil
-}
 
 func (s *Service) Stop(ctx context.Context, alias string) (string, error) {
 	a, ok := s.cfg.Aliases[alias]

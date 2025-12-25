@@ -40,31 +40,6 @@ func newApp(cfgPath string, log *slog.Logger) (*appCtx, error) {
 	}, nil
 }
 
-func newAliasesCmd(cfgPath *string, log *slog.Logger) *cobra.Command {
-	return &cobra.Command{
-		Use:   "aliases",
-		Short: "List aliases",
-		Aliases: []string{
-			"ls",
-		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			app, err := newApp(*cfgPath, log)
-			if err != nil {
-				return err
-			}
-			defer func() {
-				if err := app.svc.Close(); err != nil {
-					log.Warn("service close failed", "error", err)
-				}
-			}()
-
-			infos := app.svc.ListAliases()
-			app.renderer.Aliases(infos)
-			return nil
-		},
-	}
-}
-
 func newBuildCmd(cfgPath *string, log *slog.Logger) *cobra.Command {
 	return &cobra.Command{
 		Use:   "build <alias|all>",
@@ -144,41 +119,6 @@ func newRunCmd(cfgPath *string, log *slog.Logger) *cobra.Command {
 				Stdout:     os.Stdout,
 			}
 			return app.svc.AttachAndWait(ctx, attachOpts)
-		},
-	}
-}
-
-func newStartCmd(cfgPath *string, log *slog.Logger) *cobra.Command {
-	return &cobra.Command{
-		Use:   "start <alias>",
-		Short: "Start alias container",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			app, err := newApp(*cfgPath, log)
-			if err != nil {
-				return err
-			}
-			defer func() {
-				if err := app.svc.Close(); err != nil {
-					log.Warn("service close failed", "error", err)
-				}
-			}()
-
-			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-			defer stop()
-
-			info, err := app.svc.AliasInfo(args[0])
-			if err != nil {
-				return err
-			}
-			app.renderer.BuildStart(info)
-
-			id, err := app.svc.Start(ctx, args[0], os.Stdout)
-			if err != nil {
-				return err
-			}
-			app.renderer.RunStart(id)
-			return nil
 		},
 	}
 }

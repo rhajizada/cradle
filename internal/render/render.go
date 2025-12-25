@@ -14,12 +14,6 @@ func New(log *slog.Logger) *Renderer {
 	return &Renderer{log: log}
 }
 
-func (r *Renderer) Aliases(infos []service.AliasInfo) {
-	for _, info := range infos {
-		r.log.Info("alias", "name", info.Name, "kind", info.Kind, "detail", info.Description())
-	}
-}
-
 func (r *Renderer) BuildStart(info service.AliasInfo) {
 	switch info.Kind {
 	case service.ImagePull:

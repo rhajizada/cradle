@@ -4,7 +4,7 @@ Cradle is a lightweight CLI for jumping into a Docker image as if it were a temp
 
 ## Features
 
-- YAML config with aliases for pull or build images.
+- YAML config with named images for pull or build.
 - Environment variable substitution in config.
 - Interactive attach with TTY, resize, and signal handling.
 - Mounts, ports, and resource limits.
@@ -32,7 +32,6 @@ cradle [--config <path>] <command>
 
 Commands:
 
-- `aliases` / `ls` - list aliases
 - `build <alias|all>` - pull or build images
 - `run <alias>` - run alias interactively
 
@@ -85,4 +84,3 @@ cradle run ubuntu
 ## Docs
 
 - [Config reference](docs/CONFIG.md)
-

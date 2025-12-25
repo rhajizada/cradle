@@ -40,6 +40,9 @@ jobs:
 
       - name: Run tests
         run: go tool gotestsum --junitfile results/unit-tests.xml
+        env:
+          DOCKER_HOST: tcp://127.0.0.1:2375
+          DOCKER_TLS_CERTDIR: ""
 
   build:
     name: build

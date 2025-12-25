@@ -1,63 +1,23 @@
 # Cradle
 
-Cradle is a lightweight CLI for jumping into a Docker image as if it were a temporary dev environment. Point it at an image (or alias) and it builds/launches it with a consistent, preconfigured setup, then opens a ready-to-use interactive shell so you can test tools, reproduce issues, or explore a distro without setting anything up locally.
+Cradle is a lightweight CLI for jumping into preconfigured Docker environments. Define images and runtime settings in a YAML file, then build/pull, start, and attach with consistent mounts, env, and resources.
 
-## Features
+## Why Cradle
 
-- YAML config with named images for pull or build.
-- Environment variable substitution in config.
-- Interactive attach with TTY, resize, and signal handling.
-- Mounts, ports, and resource limits.
-- Clean, colorized pull/build output.
+- Single config for repeatable dev shells.
+- Pull or build images per alias.
+- Interactive attach with proper TTY handling.
+- Clean container reuse when `auto_remove` is false.
 
-## Install
+## Quick Start
 
-Build locally:
+Build:
 
 ```sh
 go build -o bin/cradle ./
 ```
 
-Print version:
-
-```sh
-./bin/cradle -V
-```
-
-## Usage
-
-```sh
-cradle [--config <path>] <command>
-```
-
-Commands:
-
-- `build <alias|all>` - pull or build images
-- `ls` - list aliases with image/container status
-- `run <alias>` - run alias interactively
-- `stop <alias>` - stop alias container
-
-## Config
-
-Default config path:
-
-- `${XDG_CONFIG_HOME}/cradle/config.yaml` (preferred)
-- `$HOME/.config/cradle/config.yaml` (fallback)
-
-Defaults in config:
-
-- `image.build.dockerfile`: `Dockerfile`
-- `run.tty`: `true`
-- `run.stdin_open`: `true`
-- `run.attach`: `true`
-- `run.auto_remove`: `false`
-- All other optional strings default to empty, booleans to `false`, lists/maps to empty.
-
-Config supports environment variable substitution (see `docs/CONFIG.md`).
-
-## Quick Start
-
-Create a config at `${XDG_CONFIG_HOME}/cradle/config.yaml`:
+Create `${XDG_CONFIG_HOME}/cradle/config.yaml`:
 
 ```yaml
 version: 1
@@ -67,22 +27,50 @@ aliases:
       pull:
         ref: ubuntu:24.04
     run:
-      username: ${USER:-user}
-      uid: ${UID:-1000}
-      gid: ${GID:-1000}
       cmd: ["/bin/bash"]
-      tty: true
-      stdin_open: true
       auto_remove: false
-      network: host
 ```
 
 Run:
 
 ```sh
-cradle run ubuntu
+./bin/cradle run ubuntu
 ```
 
-## Docs
+## Commands
 
-- [Config reference](docs/CONFIG.md)
+| Command | Description |
+| --- | --- |
+| `build` | Pull or build images |
+| `ls` | List aliases with image/container status |
+| `run <alias>` | Run alias |
+| `stop <alias>` | Stop alias container |
+
+## Configuration
+
+Default config path:
+
+- `${XDG_CONFIG_HOME}/cradle/config.yaml` (preferred)
+- `$HOME/.config/cradle/config.yaml` (fallback)
+
+Essentials:
+
+- `aliases.<name>.image.pull.ref`: image reference to pull (e.g. `ubuntu:24.04`).
+- `aliases.<name>.image.build`: build context and options (`cwd`, `dockerfile`, `args`, `target`).
+- `aliases.<name>.run.cmd`: command to run in the container.
+- `aliases.<name>.run.env`: map of environment variables.
+- `aliases.<name>.run.mounts`: bind/volume/tmpfs mounts into the container.
+- `aliases.<name>.run.ports`: port mappings (`host:container`).
+- `aliases.<name>.run.auto_remove`: keep container after exit when `false`.
+
+Defaults:
+
+- `image.build.dockerfile`: `Dockerfile`
+- `run.tty`: `true`
+- `run.stdin_open`: `true`
+- `run.attach`: `true`
+- `run.auto_remove`: `false`
+
+Full schema and per-field examples are in [`docs/CONFIG.md`](docs/CONFIG.md).
+
+

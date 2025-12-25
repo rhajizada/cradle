@@ -1,0 +1,4 @@
+gcc
+gcc-c++
+hostname
+make

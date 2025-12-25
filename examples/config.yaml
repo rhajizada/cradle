@@ -1,0 +1,158 @@
+version: 1
+aliases:
+  almalinux9:
+    image:
+      build:
+        cwd: ./images/almalinux9
+        dockerfile: Dockerfile
+        args:
+          USERNAME: ${USER}
+          UID: ${UID}
+    run:
+      workdir: /home/${USER}
+      cmd: ["/bin/bash"]
+      network: host
+      mounts:
+        - type: bind
+          source: /home
+          target: /home
+  archlinux:
+    image:
+      build:
+        cwd: ./images/archlinux
+        dockerfile: Dockerfile
+        args:
+          USERNAME: ${USER}
+          UID: ${UID}
+    run:
+      workdir: /home/${USER}
+      cmd: ["/bin/bash"]
+      network: host
+      mounts:
+        - type: bind
+          source: /home
+          target: /home
+  code:
+    image:
+      pull:
+        ref: lscr.io/linuxserver/code-server:latest
+    run:
+      ports:
+        - "8443:8443"
+      env:
+        PUID: 1000
+        PGID: 1000
+        TZ: Etc/UTC
+      mounts:
+        - type: tmpfs
+          target: /config
+      attach: false
+  debian12:
+    image:
+      build:
+        cwd: ./images/debian12
+        dockerfile: Dockerfile
+        args:
+          USERNAME: ${USER}
+          UID: ${UID}
+    run:
+      workdir: /home/${USER}
+      cmd: ["/bin/bash"]
+      network: host
+      mounts:
+        - type: bind
+          source: /home
+          target: /home
+  echo:
+    image:
+      pull:
+        ref: hashicorp/http-echo
+    run:
+      ports:
+        - "5678:5678"
+      cmd: ["-text=hello", "-listen=:5678"]
+      attach: false
+  fedora44:
+    image:
+      build:
+        cwd: ./images/fedora44
+        dockerfile: Dockerfile
+        args:
+          USERNAME: ${USER}
+          UID: ${UID}
+    run:
+      workdir: /home/${USER}
+      cmd: ["/bin/bash"]
+      network: host
+      mounts:
+        - type: bind
+          source: /home
+          target: /home
+  opensuse16:
+    image:
+      build:
+        cwd: ./images/opensuse16
+        dockerfile: Dockerfile
+        args:
+          USERNAME: ${USER}
+          UID: ${UID}
+    run:
+      workdir: /home/${USER}
+      cmd: ["/bin/bash"]
+      network: host
+      mounts:
+        - type: bind
+          source: /home
+          target: /home
+  rocky9:
+    image:
+      build:
+        cwd: ./images/rocky9
+        dockerfile: Dockerfile
+        args:
+          USERNAME: ${USER}
+          UID: ${UID}
+    run:
+      workdir: /home/${USER}
+      cmd: ["/bin/bash"]
+      network: host
+      mounts:
+        - type: bind
+          source: /home
+          target: /home
+  transmission:
+    image:
+      pull:
+        ref: lscr.io/linuxserver/transmission:latest
+    run:
+      ports:
+        - "9091:9091"
+        - "51413:51413"
+        - "51413:51413/udp"
+      env:
+        PUID: 1000
+        PGID: 1000
+        TZ: Etc/UTC
+      mounts:
+        - type: tmpfs
+          target: /config
+        - type: bind
+          source: ${HOME}/Downloads
+          target: /downloads
+      attach: false
+  ubuntu2404:
+    image:
+      build:
+        cwd: ./images/ubuntu2404
+        dockerfile: Dockerfile
+        args:
+          USERNAME: ${USER}
+          UID: ${UID}
+    run:
+      workdir: /home/${USER}
+      cmd: ["/bin/bash"]
+      network: host
+      mounts:
+        - type: bind
+          source: /home
+          target: /home

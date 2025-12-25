@@ -6,6 +6,9 @@ VERSION := $(shell \
     git rev-parse --short HEAD; \
   fi)
 
+CONFIG_BASE := $(if $(XDG_CONFIG_HOME),$(XDG_CONFIG_HOME),$(HOME)/.config)
+CONFIG_DIR := $(CONFIG_BASE)/cradle
+CONFIG_FILE := $(CONFIG_DIR)/config.yaml
 
 .PHONY: build
 ## build: Build project
@@ -32,6 +35,13 @@ install: build
 	@mkdir -p $(HOME)/.local/bin
 	@cp ./bin/cradle $(HOME)/.local/bin
 	@echo "Installed cradle to '$(HOME)/.local/bin'. Please add '$(HOME)/.local/bin' to your PATH."
+
+.PHONY: config
+## config: Install example config to $XDG_CONFIG_HOME/cradle or ~/.config/cradle
+config:
+	@mkdir -p $(CONFIG_DIR)
+	@cp -R ./examples/. $(CONFIG_DIR)/
+	@echo "Cpied example configuration to '$(CONFIG_DIR)'."
 
 
 .PHONY: lint

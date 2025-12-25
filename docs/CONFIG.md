@@ -1,4 +1,4 @@
-# Configuration Reference
+# Configuration reference
 
 Cradle reads YAML config and expands environment variables before parsing. Unknown fields are errors.
 

@@ -17,7 +17,13 @@ Build:
 go build -o bin/cradle ./
 ```
 
-Create `${XDG_CONFIG_HOME}/cradle/config.yaml`:
+Install example configuration:
+
+```sh
+make config
+```
+
+Or create `${XDG_CONFIG_HOME}/cradle/config.yaml` manually:
 
 ```yaml
 version: 1
@@ -39,12 +45,12 @@ Run:
 
 ## Commands
 
-| Command | Description |
-| --- | --- |
-| `build` | Pull or build images |
-| `ls` | List aliases with image/container status |
-| `run <alias>` | Run alias |
-| `stop <alias>` | Stop alias container |
+| Command        | Description                              |
+| -------------- | ---------------------------------------- |
+| `build`        | Pull or build images                     |
+| `ls`           | List aliases with image/container status |
+| `run <alias>`  | Run alias                                |
+| `stop <alias>` | Stop alias container                     |
 
 ## Configuration
 
@@ -71,6 +77,8 @@ Defaults:
 - `run.attach`: `true`
 - `run.auto_remove`: `false`
 
-Full schema and per-field examples are in [`docs/CONFIG.md`](docs/CONFIG.md).
 
+## Docs & References
 
+- [Configuration reference](docs/CONFIG.md)
+- [Example configuration](examples/config.yaml)

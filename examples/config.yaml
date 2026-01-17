@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/rhajizada/cradle/refs/heads/main/configuration.schema.json
 version: 1
 aliases:
   almalinux9:
@@ -38,6 +39,14 @@ aliases:
         - type: bind
           source: /home
           target: /home
+  badgen:
+    image:
+      pull:
+        ref: amio/badgen
+    run:
+      ports:
+        - "3000:3000"
+      attach: false
   code:
     image:
       pull:
@@ -46,8 +55,8 @@ aliases:
       ports:
         - "8443:8443"
       env:
-        PUID: 1000
-        PGID: 1000
+        PUID: "1000"
+        PGID: "1000"
         TZ: Etc/UTC
       mounts:
         - type: tmpfs
@@ -148,8 +157,8 @@ aliases:
         - "51413:51413"
         - "51413:51413/udp"
       env:
-        PUID: 1000
-        PGID: 1000
+        PUID: "1000"
+        PGID: "1000"
         TZ: Etc/UTC
       mounts:
         - type: tmpfs

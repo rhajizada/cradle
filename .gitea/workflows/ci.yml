@@ -61,7 +61,7 @@ jobs:
           check-latest: true
       - name: Build
         run: |
-          go build -ldflags="-s -w -X main.Version=$(git rev-parse --short HEAD)" -o bin/cradle
+          go build -ldflags="-s -w -X main.Version=$(git rev-parse --short HEAD)" -o bin/cradle ./cmd/cradle
         env:
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.arch }}

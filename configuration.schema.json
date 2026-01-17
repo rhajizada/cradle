@@ -1,0 +1,262 @@
+{
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "integer"
+    },
+    "aliases": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "image": {
+            "type": "object",
+            "properties": {
+              "pull": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "ref": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "ref"
+                ],
+                "additionalProperties": false
+              },
+              "build": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "cwd": {
+                    "type": "string"
+                  },
+                  "dockerfile": {
+                    "type": "string"
+                  },
+                  "args": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  "target": {
+                    "type": "string"
+                  },
+                  "labels": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  "pull": {
+                    "type": "boolean"
+                  },
+                  "no_cache": {
+                    "type": "boolean"
+                  },
+                  "cache_from": {
+                    "type": [
+                      "null",
+                      "array"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "network": {
+                    "type": "string"
+                  },
+                  "extra_hosts": {
+                    "type": [
+                      "null",
+                      "array"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "platforms": {
+                    "type": [
+                      "null",
+                      "array"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "cwd"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          "run": {
+            "type": "object",
+            "properties": {
+              "username": {
+                "type": "string"
+              },
+              "uid": {
+                "type": "integer"
+              },
+              "gid": {
+                "type": "integer"
+              },
+              "tty": {
+                "type": [
+                  "null",
+                  "boolean"
+                ]
+              },
+              "stdin_open": {
+                "type": [
+                  "null",
+                  "boolean"
+                ]
+              },
+              "auto_remove": {
+                "type": [
+                  "null",
+                  "boolean"
+                ]
+              },
+              "attach": {
+                "type": [
+                  "null",
+                  "boolean"
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "hostname": {
+                "type": "string"
+              },
+              "workdir": {
+                "type": "string"
+              },
+              "env": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "entrypoint": {
+                "type": [
+                  "null",
+                  "array"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "cmd": {
+                "type": [
+                  "null",
+                  "array"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "network": {
+                "type": "string"
+              },
+              "ports": {
+                "type": [
+                  "null",
+                  "array"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "extra_hosts": {
+                "type": [
+                  "null",
+                  "array"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "mounts": {
+                "type": [
+                  "null",
+                  "array"
+                ],
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "string"
+                    },
+                    "target": {
+                      "type": "string"
+                    },
+                    "readonly": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "target"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "resources": {
+                "type": "object",
+                "properties": {
+                  "cpus": {
+                    "type": "number"
+                  },
+                  "memory": {
+                    "type": "string"
+                  },
+                  "shm_size": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "privileged": {
+                "type": "boolean"
+              },
+              "restart": {
+                "type": "string"
+              },
+              "platform": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "image",
+          "run"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "required": [
+    "version",
+    "aliases"
+  ],
+  "additionalProperties": false
+}

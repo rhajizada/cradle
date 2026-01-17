@@ -13,7 +13,7 @@ CONFIG_FILE := $(CONFIG_DIR)/config.yaml
 .PHONY: build
 ## build: Build project
 build:
-	go build -ldflags "-s -w -X 'main.Version=$(VERSION)'" -o bin/cradle
+	go build -ldflags "-s -w -X main.Version=$(VERSION)" -o bin/cradle ./cmd/cradle
 
 
 .PHONY: clean
@@ -62,13 +62,18 @@ test:
 .PHONY: coverage
 ## coverage: Generate test coverage report
 coverage:
-	@go tool gotestsum -- -coverprofile=cover.out
+	@go tool gotestsum -- -coverprofile=coverage.out ./...
 	@go tool cover -func=coverage.out
 
 .PHONY: run
 ## run: Build and run in development mode
 run:
-	@go run main.go
+	@go run ./cmd/cradle
+
+.PHONY: schema
+## schema: Generate configuration schema JSON
+schema:
+	@go run ./cmd/configschema > configuration.schema.json
 
 .PHONY: uninstall
 ## uninstall: Uninstall

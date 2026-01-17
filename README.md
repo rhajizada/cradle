@@ -4,6 +4,7 @@
 ![Go](https://img.shields.io/badge/Go-1.25-blue.svg)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=fff)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
+![coverage](https://signum.rhajizada.dev/api/badges/41b351aa-7fbd-4f4e-a3ae-f46875c940fc)
 
 **cradle** is a lightweight CLI for launching and attaching to predefined Docker containers. Define images and runtime settings in a YAML file, then build/pull, start, and attach with consistent mounts, env, and resources.
 
@@ -19,7 +20,7 @@
 Build:
 
 ```sh
-go build -o bin/cradle ./
+go build -o bin/cradle ./cmd/cradle
 ```
 
 Install example configuration:

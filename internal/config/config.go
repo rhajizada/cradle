@@ -12,91 +12,91 @@ import (
 
 type Config struct {
 	// BaseDir is the directory containing the config file; useful for resolving relative paths.
-	BaseDir string `yaml:"-"`
+	BaseDir string `json:"-" yaml:"-"`
 
-	Version int              `yaml:"version"`
-	Aliases map[string]Alias `yaml:"aliases"`
+	Version int              `json:"version" yaml:"version"`
+	Aliases map[string]Alias `json:"aliases" yaml:"aliases"`
 }
 
 type Alias struct {
-	Image ImageSpec `yaml:"image"`
-	Run   RunSpec   `yaml:"run"`
+	Image ImageSpec `json:"image" yaml:"image"`
+	Run   RunSpec   `json:"run" yaml:"run"`
 }
 
 type ImageSpec struct {
 	// Exactly one of Pull or Build should be set.
-	Pull  *PullSpec  `yaml:"pull,omitempty"`
-	Build *BuildSpec `yaml:"build,omitempty"`
+	Pull  *PullSpec  `json:"pull,omitempty" yaml:"pull,omitempty"`
+	Build *BuildSpec `json:"build,omitempty" yaml:"build,omitempty"`
 }
 
 type PullSpec struct {
-	Ref string `yaml:"ref"` // e.g. ubuntu:24.04
+	Ref string `json:"ref" yaml:"ref"` // e.g. ubuntu:24.04
 	// Optional: later you can add platform, auth, etc.
 }
 
 type BuildSpec struct {
-	Cwd        string            `yaml:"cwd"`                  // context root (your “cwd”)
-	Dockerfile string            `yaml:"dockerfile,omitempty"` // default: Dockerfile
-	Args       map[string]string `yaml:"args,omitempty"`
-	Target     string            `yaml:"target,omitempty"`
-	Labels     map[string]string `yaml:"labels,omitempty"`
+	Cwd        string            `json:"cwd" yaml:"cwd"`                                   // context root (your “cwd”)
+	Dockerfile string            `json:"dockerfile,omitempty" yaml:"dockerfile,omitempty"` // default: Dockerfile
+	Args       map[string]string `json:"args,omitempty" yaml:"args,omitempty"`
+	Target     string            `json:"target,omitempty" yaml:"target,omitempty"`
+	Labels     map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
 
-	PullParent bool     `yaml:"pull,omitempty"` // maps to PullParent
-	NoCache    bool     `yaml:"no_cache,omitempty"`
-	CacheFrom  []string `yaml:"cache_from,omitempty"`
+	PullParent bool     `json:"pull,omitempty" yaml:"pull,omitempty"` // maps to PullParent
+	NoCache    bool     `json:"no_cache,omitempty" yaml:"no_cache,omitempty"`
+	CacheFrom  []string `json:"cache_from,omitempty" yaml:"cache_from,omitempty"`
 
 	// Keep minimal; add more only when you actually need them.
-	Network    string   `yaml:"network,omitempty"`     // e.g. "host"
-	ExtraHosts []string `yaml:"extra_hosts,omitempty"` // ["host.docker.internal:host-gateway"]
+	Network    string   `json:"network,omitempty" yaml:"network,omitempty"`         // e.g. "host"
+	ExtraHosts []string `json:"extra_hosts,omitempty" yaml:"extra_hosts,omitempty"` // ["host.docker.internal:host-gateway"]
 
-	Platforms []string `yaml:"platforms,omitempty"` // e.g. ["linux/amd64"]
+	Platforms []string `json:"platforms,omitempty" yaml:"platforms,omitempty"` // e.g. ["linux/amd64"]
 }
 
 type RunSpec struct {
 	// Identity (your choice: expose uid/gid/username only)
-	Username string `yaml:"username"`
-	UID      int    `yaml:"uid"`
-	GID      int    `yaml:"gid"`
+	Username string `json:"username,omitempty" yaml:"username,omitempty"`
+	UID      int    `json:"uid,omitempty" yaml:"uid,omitempty"`
+	GID      int    `json:"gid,omitempty" yaml:"gid,omitempty"`
 
 	// UX defaults for interactive shells
-	TTY        *bool `yaml:"tty,omitempty"`         // default false if nil
-	StdinOpen  *bool `yaml:"stdin_open,omitempty"`  // default false if nil
-	AutoRemove *bool `yaml:"auto_remove,omitempty"` // default false if nil
-	Attach     *bool `yaml:"attach,omitempty"`      // default false if nil
+	TTY        *bool `json:"tty,omitempty" yaml:"tty,omitempty"`                 // default false if nil
+	StdinOpen  *bool `json:"stdin_open,omitempty" yaml:"stdin_open,omitempty"`   // default false if nil
+	AutoRemove *bool `json:"auto_remove,omitempty" yaml:"auto_remove,omitempty"` // default false if nil
+	Attach     *bool `json:"attach,omitempty" yaml:"attach,omitempty"`           // default false if nil
 
-	Name     string `yaml:"name,omitempty"`     // optional; else generated
-	Hostname string `yaml:"hostname,omitempty"` // optional
+	Name     string `json:"name,omitempty" yaml:"name,omitempty"`         // optional; else generated
+	Hostname string `json:"hostname,omitempty" yaml:"hostname,omitempty"` // optional
 
-	Workdir    string            `yaml:"workdir,omitempty"`
-	Env        map[string]string `yaml:"env,omitempty"` // rendered into KEY=VAL
-	Entrypoint []string          `yaml:"entrypoint,omitempty"`
-	Cmd        []string          `yaml:"cmd,omitempty"`
+	Workdir    string            `json:"workdir,omitempty" yaml:"workdir,omitempty"`
+	Env        map[string]string `json:"env,omitempty" yaml:"env,omitempty"` // rendered into KEY=VAL
+	Entrypoint []string          `json:"entrypoint,omitempty" yaml:"entrypoint,omitempty"`
+	Cmd        []string          `json:"cmd,omitempty" yaml:"cmd,omitempty"`
 
-	Network    string   `yaml:"network,omitempty"` // bridge|host|none|<network>
-	Ports      []string `yaml:"ports,omitempty"`   // ["8080:80", "127.0.0.1:2222:22"]
-	ExtraHosts []string `yaml:"extra_hosts,omitempty"`
+	Network    string   `json:"network,omitempty" yaml:"network,omitempty"` // bridge|host|none|<network>
+	Ports      []string `json:"ports,omitempty" yaml:"ports,omitempty"`     // ["8080:80", "127.0.0.1:2222:22"]
+	ExtraHosts []string `json:"extra_hosts,omitempty" yaml:"extra_hosts,omitempty"`
 
-	Mounts []MountSpec `yaml:"mounts,omitempty"`
+	Mounts []MountSpec `json:"mounts,omitempty" yaml:"mounts,omitempty"`
 
-	Resources  ResourcesSpec `yaml:"resources,omitempty"`
-	Privileged bool          `yaml:"privileged,omitempty"`
-	Restart    string        `yaml:"restart,omitempty"` // "no", "on-failure", "always", "unless-stopped"
+	Resources  ResourcesSpec `json:"resources,omitempty" yaml:"resources,omitempty"`
+	Privileged bool          `json:"privileged,omitempty" yaml:"privileged,omitempty"`
+	Restart    string        `json:"restart,omitempty" yaml:"restart,omitempty"` // "no", "on-failure", "always", "unless-stopped"
 
-	Platform string `yaml:"platform,omitempty"` // optional override, e.g. linux/amd64
+	Platform string `json:"platform,omitempty" yaml:"platform,omitempty"` // optional override, e.g. linux/amd64
 }
 
 type MountSpec struct {
 	// type: bind|volume|tmpfs (start with bind+volume)
-	Type     string `yaml:"type"`
-	Source   string `yaml:"source"`
-	Target   string `yaml:"target"`
-	ReadOnly bool   `yaml:"readonly,omitempty"`
+	Type     string `json:"type" yaml:"type"`
+	Source   string `json:"source,omitempty" yaml:"source,omitempty"`
+	Target   string `json:"target" yaml:"target"`
+	ReadOnly bool   `json:"readonly,omitempty" yaml:"readonly,omitempty"`
 }
 
 type ResourcesSpec struct {
-	CPUs    float64 `yaml:"cpus,omitempty"`   // maps to NanoCPUs (cpus * 1e9)
-	Memory  string  `yaml:"memory,omitempty"` // e.g. "512m", "2g" (parse later)
-	ShmSize string  `yaml:"shm_size,omitempty"`
+	CPUs    float64 `json:"cpus,omitempty" yaml:"cpus,omitempty"`     // maps to NanoCPUs (cpus * 1e9)
+	Memory  string  `json:"memory,omitempty" yaml:"memory,omitempty"` // e.g. "512m", "2g" (parse later)
+	ShmSize string  `json:"shm_size,omitempty" yaml:"shm_size,omitempty"`
 }
 
 func LoadFile(path string) (*Config, error) {

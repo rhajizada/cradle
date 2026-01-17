@@ -19,7 +19,7 @@
 Build:
 
 ```sh
-go build -o bin/cradle ./
+go build -o bin/cradle ./cmd/cradle
 ```
 
 Install example configuration:

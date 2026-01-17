@@ -11,6 +11,7 @@ require (
 	github.com/containerd/containerd/v2 v2.1.4
 	github.com/containerd/errdefs v1.0.0
 	github.com/docker/go-units v0.5.0
+	github.com/google/jsonschema-go v0.4.2
 	github.com/moby/buildkit v0.25.2
 	github.com/moby/moby/api v1.52.0
 	github.com/moby/moby/client v0.2.1

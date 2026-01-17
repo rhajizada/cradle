@@ -83,11 +83,11 @@ jobs:
           if [ "$GOOS" = "windows" ]; then
             OUT="${OUT}.exe"
           fi
-          go build -ldflags="-s -w -X main.Version=${{ inputs.version }}" -o "${OUT}" .
+          go build -ldflags="-s -w -X github.com/rhajizada/cradle/cmd/cradle.Version=${{ inputs.version }}" -o "${OUT}" ./cmd/cradle
         shell: bash
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: cradle-${{ matrix.goos }}-${{ matrix.goarch }}
           path: bin/*

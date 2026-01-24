@@ -25,6 +25,10 @@ func New(cfg *config.Config) (*Service, error) {
 	return &Service{cfg: cfg, cli: cli}, nil
 }
 
+func NewWithClient(cfg *config.Config, cli *client.Client) *Service {
+	return &Service{cfg: cfg, cli: cli}
+}
+
 func (s *Service) Close() error {
 	return s.cli.Close()
 }
@@ -80,7 +84,7 @@ func (s *Service) AliasInfo(name string) (AliasInfo, error) {
 	info := AliasInfo{Name: name}
 	if a.Image.Pull != nil {
 		info.Kind = ImagePull
-		info.Ref = normalizeImageRef(a.Image.Pull.Ref)
+		info.Ref = NormalizeImageRef(a.Image.Pull.Ref)
 		return info, nil
 	}
 	if a.Image.Build != nil {
@@ -98,7 +102,7 @@ func (s *Service) Build(ctx context.Context, alias string, out io.Writer) error 
 		return fmt.Errorf("unknown alias %q", alias)
 	}
 	if a.Image.Pull != nil {
-		ref := normalizeImageRef(a.Image.Pull.Ref)
+		ref := NormalizeImageRef(a.Image.Pull.Ref)
 		return pullImage(ctx, s.cli, ref, out)
 	}
 	if a.Image.Build != nil {
@@ -107,14 +111,14 @@ func (s *Service) Build(ctx context.Context, alias string, out io.Writer) error 
 	return fmt.Errorf("alias %q has no image", alias)
 }
 
-func (s *Service) ensureImage(ctx context.Context, alias string, out io.Writer) (string, error) {
+func (s *Service) EnsureImage(ctx context.Context, alias string, out io.Writer) (string, error) {
 	a, ok := s.cfg.Aliases[alias]
 	if !ok {
 		return "", fmt.Errorf("unknown alias %q", alias)
 	}
 
 	if a.Image.Pull != nil {
-		ref := normalizeImageRef(a.Image.Pull.Ref)
+		ref := NormalizeImageRef(a.Image.Pull.Ref)
 		if err := pullImage(ctx, s.cli, ref, out); err != nil {
 			return "", err
 		}
@@ -136,6 +140,6 @@ func imageTag(alias string) string {
 	return fmt.Sprintf("cradle/%s:latest", alias)
 }
 
-func normalizeImageRef(ref string) string {
+func NormalizeImageRef(ref string) string {
 	return strings.TrimSpace(ref)
 }

@@ -1,13 +1,15 @@
-package logging
+package logging_test
 
 import (
 	"bytes"
 	"testing"
+
+	"github.com/rhajizada/cradle/internal/logging"
 )
 
 func TestNewLoggerFiltersByLevel(t *testing.T) {
 	var buf bytes.Buffer
-	logger := New(&buf)
+	logger := logging.New(&buf)
 
 	logger.Debug("hidden")
 	if buf.Len() != 0 {

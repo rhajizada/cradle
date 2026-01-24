@@ -1,4 +1,4 @@
-package render
+package render_test
 
 import (
 	"bytes"
@@ -8,13 +8,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/rhajizada/cradle/internal/render"
 	"github.com/rhajizada/cradle/internal/service"
 )
 
 func TestListStatusesTable(t *testing.T) {
 	var buf bytes.Buffer
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	r := New(log, &buf)
+	r := render.New(log, &buf)
 
 	items := []service.AliasStatus{
 		{
@@ -60,10 +61,10 @@ func TestListStatusesTable(t *testing.T) {
 		if len(item.ContainerName) > maxContainerName {
 			maxContainerName = len(item.ContainerName)
 		}
-		if l := len(imageStatusLabel(item.ImagePresent)); l > maxImageStatus {
+		if l := len(render.ImageStatusLabel(item.ImagePresent)); l > maxImageStatus {
 			maxImageStatus = l
 		}
-		if l := len(containerStatusLabel(item)); l > maxContainerStatus {
+		if l := len(render.ContainerStatusLabel(item)); l > maxContainerStatus {
 			maxContainerStatus = l
 		}
 	}
@@ -85,25 +86,27 @@ func TestListStatusesTable(t *testing.T) {
 		maxContainerName, strings.Repeat("-", maxContainerName),
 		maxContainerStatus, strings.Repeat("-", maxContainerStatus),
 	)
+	var expectedSb88 strings.Builder
 	for _, item := range items {
-		expected += fmt.Sprintf(
+		expectedSb88.WriteString(fmt.Sprintf(
 			"%-*s  %-*s  %-*s  %-*s  %-*s\n",
 			maxName, item.Name,
 			maxImageRef, item.ImageRef,
-			maxImageStatus, imageStatusLabel(item.ImagePresent),
+			maxImageStatus, render.ImageStatusLabel(item.ImagePresent),
 			maxContainerName, item.ContainerName,
-			maxContainerStatus, containerStatusLabel(item),
-		)
+			maxContainerStatus, render.ContainerStatusLabel(item),
+		))
 	}
+	expected += expectedSb88.String()
 
 	if buf.String() != expected {
 		t.Fatalf("unexpected output:\n%s", buf.String())
 	}
 }
 
-func TestRunStartStopAndBuildStart(t *testing.T) {
+func TestRunStartStopAndBuildStart(_ *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	r := New(log, io.Discard)
+	r := render.New(log, io.Discard)
 
 	r.RunStart("id")
 	r.RunStop("id")
@@ -128,13 +131,13 @@ func TestContainerStatusLabelVariants(t *testing.T) {
 			ContainerPresent: true,
 			ContainerStatus:  status,
 		}
-		if got := containerStatusLabel(item); got != want {
+		if got := render.ContainerStatusLabel(item); got != want {
 			t.Fatalf("status %q: got %q want %q", status, got, want)
 		}
 	}
 
 	item := service.AliasStatus{ContainerPresent: false}
-	if got := containerStatusLabel(item); got != "❌" {
+	if got := render.ContainerStatusLabel(item); got != "❌" {
 		t.Fatalf("missing container: got %q", got)
 	}
 }

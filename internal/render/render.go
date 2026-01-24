@@ -48,10 +48,10 @@ func (r *Renderer) ListStatuses(items []service.AliasStatus) {
 		if len(item.ContainerName) > maxContainerName {
 			maxContainerName = len(item.ContainerName)
 		}
-		if l := len(imageStatusLabel(item.ImagePresent)); l > maxImageStatus {
+		if l := len(ImageStatusLabel(item.ImagePresent)); l > maxImageStatus {
 			maxImageStatus = l
 		}
-		if l := len(containerStatusLabel(item)); l > maxContainerStatus {
+		if l := len(ContainerStatusLabel(item)); l > maxContainerStatus {
 			maxContainerStatus = l
 		}
 	}
@@ -84,11 +84,11 @@ func (r *Renderer) ListStatuses(items []service.AliasStatus) {
 			maxImageRef,
 			item.ImageRef,
 			maxImageStatus,
-			imageStatusLabel(item.ImagePresent),
+			ImageStatusLabel(item.ImagePresent),
 			maxContainerName,
 			item.ContainerName,
 			maxContainerStatus,
-			containerStatusLabel(item),
+			ContainerStatusLabel(item),
 		)
 	}
 }
@@ -101,14 +101,14 @@ func (r *Renderer) RunStop(id string) {
 	r.log.Info("container stopped", "id", id)
 }
 
-func imageStatusLabel(present bool) string {
+func ImageStatusLabel(present bool) string {
 	if present {
 		return "✅"
 	}
 	return "❌"
 }
 
-func containerStatusLabel(item service.AliasStatus) string {
+func ContainerStatusLabel(item service.AliasStatus) string {
 	if !item.ContainerPresent {
 		return "❌"
 	}

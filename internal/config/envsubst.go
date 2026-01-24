@@ -22,70 +22,92 @@ func ExpandEnv(s string) (string, error) {
 	b.Grow(len(s))
 
 	for i := 0; i < len(s); {
-		ch := s[i]
-
-		// Escape: \$
-		if ch == '\\' && i+1 < len(s) && s[i+1] == '$' {
-			b.WriteByte('$')
-			i += 2
-			continue
+		next, err := appendChunk(s, i, &b)
+		if err != nil {
+			return "", err
 		}
-
-		// $$ -> $
-		if ch == '$' && i+1 < len(s) && s[i+1] == '$' {
-			b.WriteByte('$')
-			i += 2
-			continue
-		}
-
-		if ch != '$' {
-			b.WriteByte(ch)
-			i++
-			continue
-		}
-
-		// ${...}
-		if i+1 < len(s) && s[i+1] == '{' {
-			end := strings.IndexByte(s[i+2:], '}')
-			if end < 0 {
-				return "", ErrBadExpansion
-			}
-			end = i + 2 + end // absolute index of '}'
-
-			expr := s[i+2 : end] // inside braces
-			val, ok, err := evalBraceExpr(expr)
-			if err != nil {
-				return "", err
-			}
-			if ok {
-				b.WriteString(val)
-			}
-			i = end + 1
-			continue
-		}
-
-		// $VAR
-		j := i + 1
-		if j >= len(s) || !(isVarStart(rune(s[j]))) {
-			// Just a lone '$'
-			b.WriteByte('$')
-			i++
-			continue
-		}
-		j++
-		for j < len(s) && isVarContinue(rune(s[j])) {
-			j++
-		}
-		key := s[i+1 : j]
-		val, _ := lookupEnv(key)
-		b.WriteString(val)
-		i = j
+		i = next
 	}
 
 	return b.String(), nil
 }
 
-func evalBraceExpr(expr string) (val string, ok bool, err error) {
+const braceOffset = 2
+const escapeTokenLength = 2
+
+func appendChunk(s string, i int, b *strings.Builder) (int, error) {
+	if isEscapedDollar(s, i) {
+		b.WriteByte('$')
+		return i + escapeTokenLength, nil
+	}
+
+	if isDoubleDollar(s, i) {
+		b.WriteByte('$')
+		return i + escapeTokenLength, nil
+	}
+
+	if s[i] != '$' {
+		b.WriteByte(s[i])
+		return i + 1, nil
+	}
+
+	if isBraceExpr(s, i) {
+		return consumeBraceExpr(s, i, b)
+	}
+
+	return consumeSimpleVar(s, i, b), nil
+}
+
+func isEscapedDollar(s string, i int) bool {
+	return s[i] == '\\' && i+1 < len(s) && s[i+1] == '$'
+}
+
+func isDoubleDollar(s string, i int) bool {
+	return s[i] == '$' && i+1 < len(s) && s[i+1] == '$'
+}
+
+func isBraceExpr(s string, i int) bool {
+	return i+1 < len(s) && s[i] == '$' && s[i+1] == '{'
+}
+
+func consumeBraceExpr(s string, i int, b *strings.Builder) (int, error) {
+	end := strings.IndexByte(s[i+braceOffset:], '}')
+	if end < 0 {
+		return 0, ErrBadExpansion
+	}
+	end = i + braceOffset + end
+
+	expr := s[i+braceOffset : end]
+	val, ok, err := evalBraceExpr(expr)
+	if err != nil {
+		return 0, err
+	}
+	if ok {
+		b.WriteString(val)
+	}
+
+	return end + 1, nil
+}
+
+func consumeSimpleVar(s string, i int, b *strings.Builder) int {
+	j := i + 1
+	if j >= len(s) || !isVarStart(rune(s[j])) {
+		b.WriteByte('$')
+		return i + 1
+	}
+
+	j++
+	for j < len(s) && isVarContinue(rune(s[j])) {
+		j++
+	}
+
+	key := s[i+1 : j]
+	val, _ := lookupEnv(key)
+	b.WriteString(val)
+	return j
+}
+
+func evalBraceExpr(expr string) (string, bool, error) {
 	expr = strings.TrimSpace(expr)
 	if expr == "" {
 		return "", false, ErrBadExpansion
@@ -108,13 +130,11 @@ func evalBraceExpr(expr string) (val string, ok bool, err error) {
 	case "":
 		return cur, true, nil
 	case ":-":
-		// default if unset OR empty
 		if !isSet || cur == "" {
 			return rest, true, nil
 		}
 		return cur, true, nil
 	case "-":
-		// default if unset only
 		if !isSet {
 			return rest, true, nil
 		}
@@ -124,19 +144,21 @@ func evalBraceExpr(expr string) (val string, ok bool, err error) {
 	}
 }
 
-func splitParamExpr(expr string) (varName string, op string, rest string) {
+func splitParamExpr(expr string) (string, string, string) {
 	// Find first '-' that participates in either ":-" or "-" after var name.
 	// Var name ends at first non-var char.
 	i := 0
 	for i < len(expr) && isVarContinue(rune(expr[i])) {
 		i++
 	}
-	varName = expr[:i]
+	varName := expr[:i]
 	if i >= len(expr) {
 		return varName, "", ""
 	}
 
 	// Expect "-" or ":-"
+	var op string
+	var rest string
 	if expr[i] == '-' {
 		op = "-"
 		rest = expr[i+1:]

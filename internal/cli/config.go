@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 )
 
-func defaultConfigPath() string {
+func DefaultConfigPath() string {
 	if xdg, ok := os.LookupEnv("XDG_CONFIG_HOME"); ok && xdg != "" {
 		return filepath.Join(xdg, "cradle", "config.yaml")
 	}

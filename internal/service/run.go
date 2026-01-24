@@ -41,97 +41,122 @@ type AttachOptions struct {
 }
 
 const containerFingerprintLabel = "io.cradle.fingerprint"
+const (
+	nanoCPUsPerCPU    = 1_000_000_000
+	singlePortPart    = 1
+	hostPortParts     = 2
+	hostWithIPParts   = 3
+	ipv6PortPartCount = 2
+)
+
+type runFlags struct {
+	tty        bool
+	stdinOpen  bool
+	autoRemove bool
+	attach     bool
+}
 
 func (s *Service) Run(ctx context.Context, alias string, out io.Writer) (*RunResult, error) {
-	a, ok := s.cfg.Aliases[alias]
-	if !ok {
+	a, found := s.cfg.Aliases[alias]
+	if !found {
 		return nil, fmt.Errorf("unknown alias %q", alias)
 	}
 
-	imageRef, err := s.ensureImage(ctx, alias, out)
+	imageRef, err := s.EnsureImage(ctx, alias, out)
 	if err != nil {
 		return nil, err
 	}
 
-	createName := a.Run.Name
-	if createName == "" {
-		createName = fmt.Sprintf("cradle-%s", alias)
+	createName := defaultContainerName(alias, a.Run.Name)
+	flags := runFlags{
+		tty:        BoolDefault(a.Run.TTY, false),
+		stdinOpen:  BoolDefault(a.Run.StdinOpen, false),
+		autoRemove: BoolDefault(a.Run.AutoRemove, false),
+		attach:     BoolDefault(a.Run.Attach, false),
 	}
-
-	tty := boolDefault(a.Run.TTY, false)
-	stdinOpen := boolDefault(a.Run.StdinOpen, false)
-	autoRemove := boolDefault(a.Run.AutoRemove, false)
-	attach := boolDefault(a.Run.Attach, false)
 
 	imageInfo, err := s.cli.ImageInspect(ctx, imageRef)
 	if err != nil {
 		return nil, err
 	}
 
-	fingerprint, err := runFingerprint(alias, createName, imageRef, imageInfo.ID, a.Run, tty, stdinOpen, autoRemove)
+	fingerprint, err := RunFingerprint(
+		alias,
+		createName,
+		imageRef,
+		imageInfo.ID,
+		a.Run,
+		flags.tty,
+		flags.stdinOpen,
+		flags.autoRemove,
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	if result, ok, err := s.tryReuseContainer(ctx, createName, fingerprint, autoRemove, attach, tty); err != nil {
-		return nil, err
-	} else if ok {
+	if result, reused, reuseErr := s.tryReuseContainer(
+		ctx,
+		createName,
+		fingerprint,
+		flags.autoRemove,
+		flags.attach,
+		flags.tty,
+	); reuseErr != nil {
+		return nil, reuseErr
+	} else if reused {
 		return result, nil
 	}
 
-	env := mapToEnv(a.Run.Env)
-
-	userSpec := ""
-	if a.Run.UID > 0 && a.Run.GID > 0 {
-		userSpec = fmt.Sprintf("%d:%d", a.Run.UID, a.Run.GID)
+	id, createErr := s.createContainer(ctx, createName, a.Run, imageRef, fingerprint, flags)
+	if createErr != nil {
+		return nil, createErr
 	}
 
-	resources := container.Resources{}
-	if a.Run.Resources.CPUs > 0 {
-		resources.NanoCPUs = int64(a.Run.Resources.CPUs * 1e9)
-	}
-	if a.Run.Resources.Memory != "" {
-		mem, err := units.RAMInBytes(a.Run.Resources.Memory)
-		if err != nil {
-			return nil, fmt.Errorf("invalid run.resources.memory: %w", err)
-		}
-		resources.Memory = mem
-	}
+	return &RunResult{
+		ID:         id,
+		AutoRemove: flags.autoRemove,
+		Attach:     flags.attach,
+		TTY:        flags.tty,
+	}, nil
+}
 
-	hostCfg := &container.HostConfig{
-		AutoRemove:  autoRemove,
-		Privileged:  a.Run.Privileged,
-		NetworkMode: container.NetworkMode(a.Run.Network),
-		ExtraHosts:  a.Run.ExtraHosts,
-		Mounts:      toDockerMounts(a.Run.Mounts),
-		Resources:   resources,
-	}
-	if a.Run.Restart != "" {
-		hostCfg.RestartPolicy = container.RestartPolicy{Name: container.RestartPolicyMode(a.Run.Restart)}
-	}
-	if a.Run.Resources.ShmSize != "" {
-		shm, err := units.RAMInBytes(a.Run.Resources.ShmSize)
-		if err != nil {
-			return nil, fmt.Errorf("invalid run.resources.shm_size: %w", err)
-		}
-		hostCfg.ShmSize = shm
-	}
+func (s *Service) createContainer(
+	ctx context.Context,
+	name string,
+	run config.RunSpec,
+	imageRef string,
+	fingerprint string,
+	flags runFlags,
+) (string, error) {
+	env := MapToEnv(run.Env)
+	userSpec := userSpec(run)
 
-	exposed, bindings, err := parsePorts(a.Run.Ports)
+	resources, err := buildResources(run.Resources)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
+
+	hostCfg, err := buildHostConfig(run, resources, flags.autoRemove)
+	if err != nil {
+		return "", err
+	}
+
+	exposed, bindings, err := ParsePorts(run.Ports)
+	if err != nil {
+		return "", err
+	}
+	hostCfg.PortBindings = bindings
 
 	cfgCtr := &container.Config{
 		Image:        imageRef,
 		User:         userSpec,
 		Env:          env,
-		WorkingDir:   a.Run.Workdir,
-		Entrypoint:   a.Run.Entrypoint,
-		Cmd:          a.Run.Cmd,
-		Hostname:     a.Run.Hostname,
-		Tty:          tty,
-		OpenStdin:    stdinOpen,
+		WorkingDir:   run.Workdir,
+		Entrypoint:   run.Entrypoint,
+		Cmd:          run.Cmd,
+		Hostname:     run.Hostname,
+		Tty:          flags.tty,
+		OpenStdin:    flags.stdinOpen,
 		AttachStdin:  true,
 		AttachStdout: true,
 		AttachStderr: true,
@@ -141,37 +166,29 @@ func (s *Service) Run(ctx context.Context, alias string, out io.Writer) (*RunRes
 		},
 	}
 
-	hostCfg.PortBindings = bindings
-
 	createOpts := client.ContainerCreateOptions{
-		Name:       createName,
+		Name:       name,
 		Config:     cfgCtr,
 		HostConfig: hostCfg,
 	}
-	if a.Run.Platform != "" {
-		platform, err := parsePlatform(a.Run.Platform)
-		if err != nil {
-			return nil, err
+	if run.Platform != "" {
+		platform, parsePlatformErr := ParsePlatform(run.Platform)
+		if parsePlatformErr != nil {
+			return "", parsePlatformErr
 		}
 		createOpts.Platform = platform
 	}
 
 	created, err := s.cli.ContainerCreate(ctx, createOpts)
 	if err != nil {
-		return nil, err
-	}
-	id := created.ID
-
-	if _, err := s.cli.ContainerStart(ctx, id, client.ContainerStartOptions{}); err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return &RunResult{
-		ID:         id,
-		AutoRemove: autoRemove,
-		Attach:     attach,
-		TTY:        tty,
-	}, nil
+	if _, startErr := s.cli.ContainerStart(ctx, created.ID, client.ContainerStartOptions{}); startErr != nil {
+		return "", startErr
+	}
+
+	return created.ID, nil
 }
 
 func (s *Service) AttachAndWait(ctx context.Context, opts AttachOptions) error {
@@ -184,8 +201,8 @@ func (s *Service) AttachAndWait(ctx context.Context, opts AttachOptions) error {
 	defer attached.Close()
 
 	if opts.TTY && term.IsTerminal(int(opts.Stdin.Fd())) {
-		oldState, err := term.MakeRaw(int(opts.Stdin.Fd()))
-		if err == nil {
+		oldState, setRawErr := term.MakeRaw(int(opts.Stdin.Fd()))
+		if setRawErr == nil {
 			defer func() {
 				_ = term.Restore(int(opts.Stdin.Fd()), oldState)
 			}()
@@ -194,8 +211,8 @@ func (s *Service) AttachAndWait(ctx context.Context, opts AttachOptions) error {
 
 	if opts.TTY {
 		resize := func() {
-			w, h, err := term.GetSize(int(opts.Stdin.Fd()))
-			if err != nil {
+			w, h, sizeErr := term.GetSize(int(opts.Stdin.Fd()))
+			if sizeErr != nil || w < 0 || h < 0 {
 				return
 			}
 			_, _ = s.cli.ContainerResize(context.Background(), opts.ID, client.ContainerResizeOptions{
@@ -219,9 +236,9 @@ func (s *Service) AttachAndWait(ctx context.Context, opts AttachOptions) error {
 
 	wait := s.cli.ContainerWait(ctx, opts.ID, client.ContainerWaitOptions{Condition: container.WaitConditionNotRunning})
 	select {
-	case err := <-wait.Error:
-		if err != nil {
-			return err
+	case waitErr := <-wait.Error:
+		if waitErr != nil {
+			return waitErr
 		}
 	case <-wait.Result:
 	}
@@ -233,7 +250,11 @@ func (s *Service) AttachAndWait(ctx context.Context, opts AttachOptions) error {
 	return nil
 }
 
-func (s *Service) tryReuseContainer(ctx context.Context, name, fingerprint string, autoRemove, attach, tty bool) (*RunResult, bool, error) {
+func (s *Service) tryReuseContainer(
+	ctx context.Context,
+	name, fingerprint string,
+	autoRemove, attach, tty bool,
+) (*RunResult, bool, error) {
 	ctr, err := s.cli.ContainerInspect(ctx, name, client.ContainerInspectOptions{})
 	if err != nil {
 		if errdefs.IsNotFound(err) {
@@ -256,8 +277,8 @@ func (s *Service) tryReuseContainer(ctx context.Context, name, fingerprint strin
 	}
 
 	if ctr.Container.State == nil || !ctr.Container.State.Running {
-		if _, err := s.cli.ContainerStart(ctx, ctr.Container.ID, client.ContainerStartOptions{}); err != nil {
-			return nil, false, err
+		if _, startErr := s.cli.ContainerStart(ctx, ctr.Container.ID, client.ContainerStartOptions{}); startErr != nil {
+			return nil, false, startErr
 		}
 	}
 
@@ -302,7 +323,11 @@ type runFingerprintSpec struct {
 	} `json:"run"`
 }
 
-func runFingerprint(alias, name, imageRef, imageID string, run config.RunSpec, tty, stdinOpen, autoRemove bool) (string, error) {
+func RunFingerprint(
+	alias, name, imageRef, imageID string,
+	run config.RunSpec,
+	tty, stdinOpen, autoRemove bool,
+) (string, error) {
 	spec := runFingerprintSpec{
 		Alias:    alias,
 		Name:     name,
@@ -320,8 +345,8 @@ func runFingerprint(alias, name, imageRef, imageID string, run config.RunSpec, t
 		envList = append(envList, envKV{Key: k, Value: run.Env[k]})
 	}
 
-	ports := normalizeTrimmedSlice(run.Ports)
-	extraHosts := normalizeTrimmedSlice(run.ExtraHosts)
+	ports := NormalizeTrimmedSlice(run.Ports)
+	extraHosts := NormalizeTrimmedSlice(run.ExtraHosts)
 
 	spec.Run.Username = run.Username
 	spec.Run.UID = run.UID
@@ -351,7 +376,7 @@ func runFingerprint(alias, name, imageRef, imageID string, run config.RunSpec, t
 	return hex.EncodeToString(sum[:]), nil
 }
 
-func normalizeTrimmedSlice(in []string) []string {
+func NormalizeTrimmedSlice(in []string) []string {
 	if len(in) == 0 {
 		return nil
 	}
@@ -366,7 +391,7 @@ func normalizeTrimmedSlice(in []string) []string {
 	return out
 }
 
-func mapToEnv(env map[string]string) []string {
+func MapToEnv(env map[string]string) []string {
 	out := make([]string, 0, len(env))
 	for k, v := range env {
 		out = append(out, k+"="+v)
@@ -374,14 +399,72 @@ func mapToEnv(env map[string]string) []string {
 	return out
 }
 
-func boolDefault(p *bool, def bool) bool {
+func BoolDefault(p *bool, def bool) bool {
 	if p == nil {
 		return def
 	}
 	return *p
 }
 
-func toDockerMounts(ms []config.MountSpec) []mount.Mount {
+func defaultContainerName(alias, configured string) string {
+	if configured != "" {
+		return configured
+	}
+	return fmt.Sprintf("cradle-%s", alias)
+}
+
+func userSpec(run config.RunSpec) string {
+	if run.UID > 0 && run.GID > 0 {
+		return fmt.Sprintf("%d:%d", run.UID, run.GID)
+	}
+	return ""
+}
+
+func buildResources(spec config.ResourcesSpec) (container.Resources, error) {
+	resources := container.Resources{}
+	if spec.CPUs > 0 {
+		resources.NanoCPUs = int64(spec.CPUs * nanoCPUsPerCPU)
+	}
+	if spec.Memory != "" {
+		mem, err := units.RAMInBytes(spec.Memory)
+		if err != nil {
+			return resources, fmt.Errorf("invalid run.resources.memory: %w", err)
+		}
+		resources.Memory = mem
+	}
+	return resources, nil
+}
+
+func buildHostConfig(
+	run config.RunSpec,
+	resources container.Resources,
+	autoRemove bool,
+) (*container.HostConfig, error) {
+	hostCfg := &container.HostConfig{
+		AutoRemove:  autoRemove,
+		Privileged:  run.Privileged,
+		NetworkMode: container.NetworkMode(run.Network),
+		ExtraHosts:  run.ExtraHosts,
+		Mounts:      ToDockerMounts(run.Mounts),
+		Resources:   resources,
+	}
+
+	if run.Restart != "" {
+		hostCfg.RestartPolicy = container.RestartPolicy{Name: container.RestartPolicyMode(run.Restart)}
+	}
+
+	if run.Resources.ShmSize != "" {
+		shm, err := units.RAMInBytes(run.Resources.ShmSize)
+		if err != nil {
+			return nil, fmt.Errorf("invalid run.resources.shm_size: %w", err)
+		}
+		hostCfg.ShmSize = shm
+	}
+
+	return hostCfg, nil
+}
+
+func ToDockerMounts(ms []config.MountSpec) []mount.Mount {
 	out := make([]mount.Mount, 0, len(ms))
 	for _, m := range ms {
 		switch m.Type {
@@ -409,7 +492,7 @@ func toDockerMounts(ms []config.MountSpec) []mount.Mount {
 	return out
 }
 
-func parsePorts(specs []string) (mobynet.PortSet, mobynet.PortMap, error) {
+func ParsePorts(specs []string) (mobynet.PortSet, mobynet.PortMap, error) {
 	if len(specs) == 0 {
 		return nil, nil, nil
 	}
@@ -417,69 +500,101 @@ func parsePorts(specs []string) (mobynet.PortSet, mobynet.PortMap, error) {
 	exposed := mobynet.PortSet{}
 	bindings := mobynet.PortMap{}
 
-	for _, s := range specs {
-		s = strings.TrimSpace(s)
-		if s == "" {
+	for _, raw := range specs {
+		spec := strings.TrimSpace(raw)
+		if spec == "" {
 			continue
 		}
 
-		var hostIPStr, hostPortStr, containerPortStr string
-		if strings.HasPrefix(s, "[") {
-			end := strings.Index(s, "]")
-			if end == -1 {
-				return nil, nil, fmt.Errorf("invalid port mapping %q", s)
-			}
-			hostIPStr = s[1:end]
-			if end+2 >= len(s) || s[end+1] != ':' {
-				return nil, nil, fmt.Errorf("invalid port mapping %q", s)
-			}
-			rest := s[end+2:]
-			parts := strings.Split(rest, ":")
-			if len(parts) != 2 {
-				return nil, nil, fmt.Errorf("invalid port mapping %q", s)
-			}
-			hostPortStr = parts[0]
-			containerPortStr = parts[1]
-		} else {
-			parts := strings.Split(s, ":")
-			switch len(parts) {
-			case 1:
-				containerPortStr = parts[0]
-			case 2:
-				hostPortStr = parts[0]
-				containerPortStr = parts[1]
-			case 3:
-				hostIPStr = parts[0]
-				hostPortStr = parts[1]
-				containerPortStr = parts[2]
-			default:
-				return nil, nil, fmt.Errorf("invalid port mapping %q", s)
-			}
-		}
-
-		port, err := mobynet.ParsePort(containerPortStr)
+		port, binding, err := parsePortMapping(spec)
 		if err != nil {
-			return nil, nil, fmt.Errorf("invalid container port %q in %q: %w", containerPortStr, s, err)
+			return nil, nil, err
 		}
 
 		exposed[port] = struct{}{}
-
-		if hostPortStr != "" {
-			var hostIP netip.Addr
-			if hostIPStr != "" {
-				ip, err := netip.ParseAddr(hostIPStr)
-				if err != nil {
-					return nil, nil, fmt.Errorf("invalid host ip %q in %q: %w", hostIPStr, s, err)
-				}
-				hostIP = ip
-			}
-
-			bindings[port] = append(bindings[port], mobynet.PortBinding{
-				HostIP:   hostIP,
-				HostPort: hostPortStr,
-			})
+		if binding != nil {
+			bindings[port] = append(bindings[port], *binding)
 		}
 	}
 
 	return exposed, bindings, nil
+}
+
+func parsePortMapping(spec string) (mobynet.Port, *mobynet.PortBinding, error) {
+	hostIPStr, hostPortStr, containerPortStr, err := splitPortSpec(spec)
+	if err != nil {
+		return mobynet.Port{}, nil, err
+	}
+
+	port, parseErr := mobynet.ParsePort(containerPortStr)
+	if parseErr != nil {
+		return mobynet.Port{}, nil, fmt.Errorf("invalid container port %q in %q: %w", containerPortStr, spec, parseErr)
+	}
+
+	binding, hasBinding, bindingErr := buildPortBinding(hostIPStr, hostPortStr, spec)
+	if bindingErr != nil {
+		return mobynet.Port{}, nil, bindingErr
+	}
+
+	if !hasBinding {
+		return port, nil, nil
+	}
+
+	return port, &binding, nil
+}
+
+func splitPortSpec(spec string) (string, string, string, error) {
+	if strings.HasPrefix(spec, "[") {
+		return splitIPv6Port(spec)
+	}
+	return splitIPv4Port(spec)
+}
+
+func splitIPv6Port(spec string) (string, string, string, error) {
+	end := strings.Index(spec, "]")
+	if end == -1 {
+		return "", "", "", fmt.Errorf("invalid port mapping %q", spec)
+	}
+	hostIPStr := spec[1:end]
+	if end+hostPortParts >= len(spec) || spec[end+1] != ':' {
+		return "", "", "", fmt.Errorf("invalid port mapping %q", spec)
+	}
+	rest := spec[end+hostPortParts:]
+	parts := strings.Split(rest, ":")
+	if len(parts) != ipv6PortPartCount {
+		return "", "", "", fmt.Errorf("invalid port mapping %q", spec)
+	}
+	return hostIPStr, parts[0], parts[1], nil
+}
+
+func splitIPv4Port(spec string) (string, string, string, error) {
+	parts := strings.Split(spec, ":")
+	switch len(parts) {
+	case singlePortPart:
+		return "", "", parts[0], nil
+	case hostPortParts:
+		return "", parts[0], parts[1], nil
+	case hostWithIPParts:
+		return parts[0], parts[1], parts[2], nil
+	default:
+		return "", "", "", fmt.Errorf("invalid port mapping %q", spec)
+	}
+}
+
+func buildPortBinding(hostIPStr, hostPortStr, spec string) (mobynet.PortBinding, bool, error) {
+	if hostPortStr == "" {
+		return mobynet.PortBinding{}, false, nil
+	}
+
+	binding := mobynet.PortBinding{HostPort: hostPortStr}
+	if hostIPStr == "" {
+		return binding, true, nil
+	}
+
+	parsedIP, err := netip.ParseAddr(hostIPStr)
+	if err != nil {
+		return mobynet.PortBinding{}, false, fmt.Errorf("invalid host ip %q in %q: %w", hostIPStr, spec, err)
+	}
+	binding.HostIP = parsedIP
+	return binding, true, nil
 }

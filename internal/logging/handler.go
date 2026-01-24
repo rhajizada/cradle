@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -26,7 +27,7 @@ func NewHandler(out io.Writer, level slog.Level) *Handler {
 	return &Handler{
 		out:   out,
 		level: level,
-		color: isTerminal(out),
+		color: IsTerminal(out),
 	}
 }
 
@@ -39,7 +40,7 @@ func (h *Handler) Handle(_ context.Context, r slog.Record) error {
 	defer h.mu.Unlock()
 
 	var b strings.Builder
-	emoji, label, color := levelStyle(r.Level)
+	emoji, label, color := LevelStyle(r.Level)
 	if h.color {
 		fmt.Fprintf(&b, "%s%s%s %s%s%s",
 			color,
@@ -58,7 +59,7 @@ func (h *Handler) Handle(_ context.Context, r slog.Record) error {
 		allAttrs = append(allAttrs, a)
 		return true
 	})
-	appendAttrs(&b, allAttrs, h.groups, h.color)
+	AppendAttrs(&b, allAttrs, h.groups, h.color)
 	b.WriteByte('\n')
 
 	_, err := io.WriteString(h.out, b.String())
@@ -88,14 +89,14 @@ func (h *Handler) WithGroup(name string) slog.Handler {
 	}
 }
 
-func appendAttrs(b *strings.Builder, attrs []slog.Attr, groups []string, color bool) {
+func AppendAttrs(b *strings.Builder, attrs []slog.Attr, groups []string, color bool) {
 	for _, a := range attrs {
 		a.Value = a.Value.Resolve()
 		key := a.Key
 		if len(groups) > 0 {
 			key = strings.Join(groups, ".") + "." + key
 		}
-		val := formatValue(a.Value)
+		val := FormatValue(a.Value)
 		if color {
 			fmt.Fprintf(b, " %s%s%s=%s%s%s",
 				ansiDim,
@@ -111,23 +112,52 @@ func appendAttrs(b *strings.Builder, attrs []slog.Attr, groups []string, color b
 	}
 }
 
-func formatValue(v slog.Value) string {
+func FormatValue(v slog.Value) string {
 	switch v.Kind() {
 	case slog.KindString:
 		return v.String()
 	case slog.KindTime:
 		return v.Time().Format(time.RFC3339)
+	case slog.KindBool:
+		return strconv.FormatBool(v.Bool())
+	case slog.KindInt64:
+		return strconv.FormatInt(v.Int64(), 10)
+	case slog.KindUint64:
+		return strconv.FormatUint(v.Uint64(), 10)
+	case slog.KindFloat64:
+		return fmt.Sprintf("%g", v.Float64())
+	case slog.KindDuration:
+		return v.Duration().String()
+	case slog.KindAny:
+		return fmt.Sprintf("%v", v.Any())
+	case slog.KindGroup:
+		return FormatGroup(v.Group())
+	case slog.KindLogValuer:
+		return FormatValue(v.Resolve())
 	default:
 		return v.String()
 	}
 }
 
-func isTerminal(out io.Writer) bool {
+func FormatGroup(attrs []slog.Attr) string {
+	var b strings.Builder
+	b.WriteByte('{')
+	for i, a := range attrs {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		fmt.Fprintf(&b, "%s=%s", a.Key, FormatValue(a.Value))
+	}
+	b.WriteByte('}')
+	return b.String()
+}
+
+func IsTerminal(out io.Writer) bool {
 	f, ok := out.(interface{ Fd() uintptr })
 	if !ok {
 		return false
 	}
-	if v, ok := os.LookupEnv("NO_COLOR"); ok && v != "" {
+	if v, found := os.LookupEnv("NO_COLOR"); found && v != "" {
 		return false
 	}
 	return term.IsTerminal(int(f.Fd()))
@@ -143,7 +173,7 @@ const (
 	ansiBlue   = "\x1b[34m"
 )
 
-func levelStyle(level slog.Level) (emoji, label, color string) {
+func LevelStyle(level slog.Level) (string, string, string) {
 	switch {
 	case level >= slog.LevelError:
 		return "❌", "ERROR", ansiRed

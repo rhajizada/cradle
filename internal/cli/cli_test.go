@@ -1,14 +1,16 @@
-package cli
+package cli_test
 
 import (
 	"io"
 	"log/slog"
 	"testing"
+
+	"github.com/rhajizada/cradle/internal/cli"
 )
 
 func TestRootCommandWiring(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	root := newRootCmd("test", log)
+	root := cli.NewRootCmd("test", log)
 
 	if root.Use != "cradle" {
 		t.Fatalf("unexpected root Use: %q", root.Use)
@@ -30,23 +32,23 @@ func TestCommandBuilders(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	cfg := ""
 
-	if got := newBuildCmd(&cfg, log).Use; got == "" {
+	if got := cli.NewBuildCmd(&cfg, log).Use; got == "" {
 		t.Fatalf("build command Use is empty")
 	}
-	if got := newLsCmd(&cfg, log).Use; got == "" {
+	if got := cli.NewLsCmd(&cfg, log).Use; got == "" {
 		t.Fatalf("ls command Use is empty")
 	}
-	if got := newRunCmd(&cfg, log).Use; got == "" {
+	if got := cli.NewRunCmd(&cfg, log).Use; got == "" {
 		t.Fatalf("run command Use is empty")
 	}
-	if got := newStopCmd(&cfg, log).Use; got == "" {
+	if got := cli.NewStopCmd(&cfg, log).Use; got == "" {
 		t.Fatalf("stop command Use is empty")
 	}
 }
 
 func TestRootCommandVersionAndHelp(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	root := newRootCmd("test", log)
+	root := cli.NewRootCmd("test", log)
 	root.SetOut(io.Discard)
 	root.SetErr(io.Discard)
 
@@ -55,7 +57,7 @@ func TestRootCommandVersionAndHelp(t *testing.T) {
 		t.Fatalf("version execute error: %v", err)
 	}
 
-	root = newRootCmd("test", log)
+	root = cli.NewRootCmd("test", log)
 	root.SetOut(io.Discard)
 	root.SetErr(io.Discard)
 	root.SetArgs([]string{})

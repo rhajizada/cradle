@@ -1,14 +1,15 @@
-package service
+package service_test
 
 import (
 	"reflect"
 	"testing"
 
 	"github.com/rhajizada/cradle/internal/config"
+	"github.com/rhajizada/cradle/internal/service"
 )
 
 func TestNormalizeTrimmedSlice(t *testing.T) {
-	got := normalizeTrimmedSlice([]string{" a ", "", "b", "  "})
+	got := service.NormalizeTrimmedSlice([]string{" a ", "", "b", "  "})
 	want := []string{"a", "b"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("unexpected result: %#v", got)
@@ -16,18 +17,18 @@ func TestNormalizeTrimmedSlice(t *testing.T) {
 }
 
 func TestMapToEnv(t *testing.T) {
-	out := mapToEnv(map[string]string{"A": "1", "B": "2"})
+	out := service.MapToEnv(map[string]string{"A": "1", "B": "2"})
 	if len(out) != 2 {
 		t.Fatalf("expected 2 entries, got %d", len(out))
 	}
 }
 
 func TestBoolDefault(t *testing.T) {
-	if boolDefault(nil, true) != true {
+	if service.BoolDefault(nil, true) != true {
 		t.Fatalf("expected default true")
 	}
 	v := false
-	if boolDefault(&v, true) != false {
+	if service.BoolDefault(&v, true) != false {
 		t.Fatalf("expected explicit false")
 	}
 }
@@ -38,7 +39,7 @@ func TestToDockerMounts(t *testing.T) {
 		{Type: "volume", Source: "data", Target: "/data"},
 		{Type: "tmpfs", Target: "/tmp"},
 	}
-	out := toDockerMounts(mounts)
+	out := service.ToDockerMounts(mounts)
 	if len(out) != 3 {
 		t.Fatalf("expected 3 mounts, got %d", len(out))
 	}

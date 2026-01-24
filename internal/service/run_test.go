@@ -1,15 +1,16 @@
-package service
+package service_test
 
 import (
 	"testing"
 
 	"github.com/rhajizada/cradle/internal/config"
+	"github.com/rhajizada/cradle/internal/service"
 
 	mobynet "github.com/moby/moby/api/types/network"
 )
 
 func TestParsePorts(t *testing.T) {
-	exposed, bindings, err := parsePorts([]string{
+	exposed, bindings, err := service.ParsePorts([]string{
 		"80",
 		"8080:80",
 		"127.0.0.1:2222:22",
@@ -44,7 +45,7 @@ func TestParsePorts(t *testing.T) {
 }
 
 func TestParsePortsInvalid(t *testing.T) {
-	if _, _, err := parsePorts([]string{"bad:format:too:many"}); err == nil {
+	if _, _, err := service.ParsePorts([]string{"bad:format:too:many"}); err == nil {
 		t.Fatalf("expected error for invalid port mapping")
 	}
 }
@@ -58,11 +59,11 @@ func TestRunFingerprintDeterministic(t *testing.T) {
 		Cmd: []string{"sh", "-lc", "echo ok"},
 	}
 
-	first, err := runFingerprint("alias", "name", "img:tag", "imgid", run, true, true, false)
+	first, err := service.RunFingerprint("alias", "name", "img:tag", "imgid", run, true, true, false)
 	if err != nil {
 		t.Fatalf("runFingerprint error: %v", err)
 	}
-	second, err := runFingerprint("alias", "name", "img:tag", "imgid", run, true, true, false)
+	second, err := service.RunFingerprint("alias", "name", "img:tag", "imgid", run, true, true, false)
 	if err != nil {
 		t.Fatalf("runFingerprint error: %v", err)
 	}
@@ -71,7 +72,7 @@ func TestRunFingerprintDeterministic(t *testing.T) {
 	}
 
 	run.Env["A"] = "changed"
-	third, err := runFingerprint("alias", "name", "img:tag", "imgid", run, true, true, false)
+	third, err := service.RunFingerprint("alias", "name", "img:tag", "imgid", run, true, true, false)
 	if err != nil {
 		t.Fatalf("runFingerprint error: %v", err)
 	}

@@ -20,7 +20,7 @@ func main() {
 
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
-	if err := enc.Encode(s); err != nil {
-		log.Fatal(err)
+	if encodeErr := enc.Encode(s); encodeErr != nil {
+		log.Fatal(encodeErr)
 	}
 }

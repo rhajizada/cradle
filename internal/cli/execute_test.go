@@ -1,14 +1,13 @@
-package cli
+package cli_test
 
 import (
-	"os"
 	"testing"
+
+	"github.com/rhajizada/cradle/internal/cli"
 )
 
 func TestExecuteVersion(t *testing.T) {
-	origArgs := os.Args
-	t.Cleanup(func() { os.Args = origArgs })
-
-	os.Args = []string{"cradle", "-V"}
-	Execute("test")
+	if err := cli.ExecuteArgs("test", []string{"-V"}); err != nil {
+		t.Fatalf("execute error: %v", err)
+	}
 }

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -21,6 +22,12 @@ import (
 	"golang.org/x/term"
 )
 
+const (
+	scannerBufferSize   = 64 * 1024
+	scannerMaxTokenSize = 1024 * 1024
+	minLayerIDLength    = 12
+)
+
 func pullImage(ctx context.Context, cli *client.Client, ref string, out io.Writer) (err error) {
 	resp, err := cli.ImagePull(ctx, ref, client.ImagePullOptions{})
 	if err != nil {
@@ -35,9 +42,9 @@ func pullImage(ctx context.Context, cli *client.Client, ref string, out io.Write
 	return renderDockerJSON(out, resp)
 }
 
-func buildImage(ctx context.Context, cli *client.Client, b *config.BuildSpec, tag string, out io.Writer) (err error) {
+func buildImage(ctx context.Context, cli *client.Client, b *config.BuildSpec, tag string, out io.Writer) error {
 	if b == nil {
-		return fmt.Errorf("missing build spec")
+		return errors.New("missing build spec")
 	}
 
 	contextDir := b.Cwd
@@ -52,7 +59,7 @@ func buildImage(ctx context.Context, cli *client.Client, b *config.BuildSpec, ta
 		buildArgs[k] = &vv
 	}
 
-	platforms, err := parsePlatformList(b.Platforms)
+	platforms, err := ParsePlatformList(b.Platforms)
 	if err != nil {
 		return err
 	}
@@ -77,25 +84,25 @@ func buildImage(ctx context.Context, cli *client.Client, b *config.BuildSpec, ta
 		Version: build.BuilderBuildKit,
 	}
 
-	if err := runImageBuild(ctx, cli, contextDir, dockerfile, opts, out); err != nil {
-		if strings.Contains(err.Error(), "no active sessions") {
+	if buildErr := runImageBuild(ctx, cli, contextDir, dockerfile, opts, out); buildErr != nil {
+		if strings.Contains(buildErr.Error(), "no active sessions") {
 			opts.Version = build.BuilderV1
 			opts.Platforms = nil
 			return runImageBuild(ctx, cli, contextDir, dockerfile, opts, out)
 		}
-		return err
+		return buildErr
 	}
 
 	return nil
 }
 
-func parsePlatformList(specs []string) ([]ocispec.Platform, error) {
+func ParsePlatformList(specs []string) ([]ocispec.Platform, error) {
 	if len(specs) == 0 {
 		return nil, nil
 	}
 	platforms := make([]ocispec.Platform, 0, len(specs))
 	for _, s := range specs {
-		p, err := parsePlatform(s)
+		p, err := ParsePlatform(s)
 		if err != nil {
 			return nil, err
 		}
@@ -104,11 +111,14 @@ func parsePlatformList(specs []string) ([]ocispec.Platform, error) {
 	return platforms, nil
 }
 
-func runImageBuild(ctx context.Context, cli *client.Client, contextDir, dockerfile string, opts client.ImageBuildOptions, out io.Writer) (err error) {
-	tar, err := tarDir(contextDir)
-	if err != nil {
-		return err
-	}
+func runImageBuild(
+	ctx context.Context,
+	cli *client.Client,
+	contextDir, dockerfile string,
+	opts client.ImageBuildOptions,
+	out io.Writer,
+) (err error) {
+	tar := TarDir(contextDir)
 	defer func() {
 		if cerr := tar.Close(); err == nil && cerr != nil {
 			err = cerr
@@ -162,77 +172,100 @@ type buildMessage struct {
 }
 
 func renderDockerJSON(out io.Writer, in io.Reader) error {
-	style := outputStyle(out)
+	renderer := newDockerRenderer(out)
 	scanner := bufio.NewScanner(in)
-	buf := make([]byte, 0, 64*1024)
-	scanner.Buffer(buf, 1024*1024)
-	last := map[string]string{}
-	lastTrace := ""
+	buf := make([]byte, 0, scannerBufferSize)
+	scanner.Buffer(buf, scannerMaxTokenSize)
 
 	for scanner.Scan() {
-		line := scanner.Bytes()
-		if len(strings.TrimSpace(string(line))) == 0 {
-			continue
-		}
-
-		var msg buildMessage
-		if err := json.Unmarshal(line, &msg); err != nil {
-			if _, err := fmt.Fprintln(out, string(line)); err != nil {
-				return err
-			}
-			continue
-		}
-		if msg.Error != "" {
-			return fmt.Errorf("%s", msg.Error)
-		}
-		if msg.Stream != "" {
-			if err := writeString(out, style.prefixed(msg.Stream)); err != nil {
-				return err
-			}
-			continue
-		}
-		if msg.ID == "moby.buildkit.trace" && len(msg.Aux) > 0 {
-			lines, ok := decodeBuildkitTrace(msg.Aux)
-			if ok {
-				for _, line := range lines {
-					if line == "" || line == lastTrace {
-						continue
-					}
-					lastTrace = line
-					if err := writeString(out, style.line("🏗️", colorCyan, line)); err != nil {
-						return err
-					}
-				}
-			}
-			continue
-		}
-		if msg.Status != "" {
-			key := msg.ID + "|" + msg.Status + "|" + msg.Progress
-			if last[msg.ID] == key {
-				continue
-			}
-			last[msg.ID] = key
-
-			label := labelFor(msg.ID, msg.Status)
-			if msg.Progress != "" {
-				if err := writeString(out, style.line("📦", colorYellow, label, msg.Status, msg.Progress)); err != nil {
-					return err
-				}
-			} else if msg.ID != "" {
-				if err := writeString(out, style.line(statusEmoji(msg.Status), colorCyan, label, msg.Status)); err != nil {
-					return err
-				}
-			} else {
-				if err := writeString(out, style.line(statusEmoji(msg.Status), colorGreen, msg.Status)); err != nil {
-					return err
-				}
-			}
+		if err := renderer.process(scanner.Bytes()); err != nil {
+			return err
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		return err
+
+	return scanner.Err()
+}
+
+type dockerRenderer struct {
+	style     OutStyle
+	out       io.Writer
+	last      map[string]string
+	lastTrace string
+}
+
+func newDockerRenderer(out io.Writer) *dockerRenderer {
+	return &dockerRenderer{
+		style: OutputStyle(out),
+		out:   out,
+		last:  map[string]string{},
 	}
+}
+
+func (r *dockerRenderer) process(line []byte) error {
+	trimmed := strings.TrimSpace(string(line))
+	if trimmed == "" {
+		return nil
+	}
+
+	var msg buildMessage
+	if err := json.Unmarshal(line, &msg); err != nil {
+		_, writeErr := fmt.Fprintln(r.out, trimmed)
+		return writeErr
+	}
+
+	return r.dispatch(msg)
+}
+
+func (r *dockerRenderer) dispatch(msg buildMessage) error {
+	switch {
+	case msg.Error != "":
+		return fmt.Errorf("%s", msg.Error)
+	case msg.Stream != "":
+		return writeString(r.out, r.style.Prefixed(msg.Stream))
+	case msg.ID == "moby.buildkit.trace" && len(msg.Aux) > 0:
+		return r.handleTrace(msg.Aux)
+	case msg.Status != "":
+		return r.handleStatus(msg)
+	default:
+		return nil
+	}
+}
+
+func (r *dockerRenderer) handleTrace(raw json.RawMessage) error {
+	lines, ok := DecodeBuildkitTrace(raw)
+	if !ok {
+		return nil
+	}
+
+	for _, line := range lines {
+		if line == "" || line == r.lastTrace {
+			continue
+		}
+		r.lastTrace = line
+		if err := writeString(r.out, r.style.Line("🏗️", colorCyan, line)); err != nil {
+			return err
+		}
+	}
+
 	return nil
+}
+
+func (r *dockerRenderer) handleStatus(msg buildMessage) error {
+	key := msg.ID + "|" + msg.Status + "|" + msg.Progress
+	if r.last[msg.ID] == key {
+		return nil
+	}
+	r.last[msg.ID] = key
+
+	label := LabelFor(msg.ID, msg.Status)
+	switch {
+	case msg.Progress != "":
+		return writeString(r.out, r.style.Line("📦", colorYellow, label, msg.Status, msg.Progress))
+	case msg.ID != "":
+		return writeString(r.out, r.style.Line(StatusEmoji(msg.Status), colorCyan, label, msg.Status))
+	default:
+		return writeString(r.out, r.style.Line(StatusEmoji(msg.Status), colorGreen, msg.Status))
+	}
 }
 
 func writeString(out io.Writer, s string) error {
@@ -240,37 +273,37 @@ func writeString(out io.Writer, s string) error {
 	return err
 }
 
-type outStyle struct {
-	color bool
+type OutStyle struct {
+	Color bool
 }
 
-func outputStyle(out io.Writer) outStyle {
+func OutputStyle(out io.Writer) OutStyle {
 	f, ok := out.(interface{ Fd() uintptr })
 	if !ok {
-		return outStyle{}
+		return OutStyle{}
 	}
-	if v, ok := os.LookupEnv("NO_COLOR"); ok && v != "" {
-		return outStyle{}
+	if v, found := os.LookupEnv("NO_COLOR"); found && v != "" {
+		return OutStyle{}
 	}
-	return outStyle{color: term.IsTerminal(int(f.Fd()))}
+	return OutStyle{Color: term.IsTerminal(int(f.Fd()))}
 }
 
-func (s outStyle) prefixed(text string) string {
-	if !s.color {
+func (s OutStyle) Prefixed(text string) string {
+	if !s.Color {
 		return text
 	}
 	return colorDim + text + colorReset
 }
 
-func (s outStyle) line(emoji, color string, parts ...string) string {
-	text := strings.Join(filterEmpty(parts), " ")
-	if !s.color {
+func (s OutStyle) Line(emoji, color string, parts ...string) string {
+	text := strings.Join(FilterEmpty(parts), " ")
+	if !s.Color {
 		return fmt.Sprintf("%s %s\n", emoji, text)
 	}
 	return fmt.Sprintf("%s %s%s%s\n", emoji, color, text, colorReset)
 }
 
-func filterEmpty(parts []string) []string {
+func FilterEmpty(parts []string) []string {
 	out := make([]string, 0, len(parts))
 	for _, p := range parts {
 		if strings.TrimSpace(p) != "" {
@@ -280,17 +313,51 @@ func filterEmpty(parts []string) []string {
 	return out
 }
 
-func decodeBuildkitTrace(raw json.RawMessage) ([]string, bool) {
+func DecodeBuildkitTrace(raw json.RawMessage) ([]string, bool) {
+	dt, ok := decodeTrace(raw)
+	if !ok {
+		return nil, false
+	}
+
+	sr, ok := unmarshalStatus(dt)
+	if !ok {
+		return nil, false
+	}
+
+	lines := collectTraceLines(sr)
+	if len(lines) == 0 {
+		return nil, false
+	}
+	return lines, true
+}
+
+func decodeTrace(raw json.RawMessage) ([]byte, bool) {
 	var dt []byte
 	if err := json.Unmarshal(raw, &dt); err != nil || len(dt) == 0 {
 		return nil, false
 	}
+	return dt, true
+}
+
+func unmarshalStatus(data []byte) (*controlapi.StatusResponse, bool) {
 	var sr controlapi.StatusResponse
-	if err := proto.Unmarshal(dt, &sr); err != nil {
+	if err := proto.Unmarshal(data, &sr); err != nil {
 		return nil, false
 	}
+	return &sr, true
+}
+
+func collectTraceLines(sr *controlapi.StatusResponse) []string {
 	lines := make([]string, 0)
-	for _, vtx := range sr.GetVertexes() {
+	lines = append(lines, vertexLines(sr.GetVertexes())...)
+	lines = append(lines, logLines(sr.GetLogs())...)
+	lines = append(lines, warningLines(sr.GetWarnings())...)
+	return lines
+}
+
+func vertexLines(vertexes []*controlapi.Vertex) []string {
+	lines := make([]string, 0, len(vertexes))
+	for _, vtx := range vertexes {
 		name := strings.TrimSpace(vtx.GetName())
 		if name == "" {
 			continue
@@ -303,9 +370,14 @@ func decodeBuildkitTrace(raw json.RawMessage) ([]string, bool) {
 		}
 		lines = append(lines, name)
 	}
-	for _, log := range sr.GetLogs() {
+	return lines
+}
+
+func logLines(logs []*controlapi.VertexLog) []string {
+	lines := make([]string, 0)
+	for _, log := range logs {
 		text := string(log.GetMsg())
-		for _, line := range strings.Split(text, "\n") {
+		for line := range strings.SplitSeq(text, "\n") {
 			line = strings.TrimSpace(line)
 			if line == "" {
 				continue
@@ -313,7 +385,12 @@ func decodeBuildkitTrace(raw json.RawMessage) ([]string, bool) {
 			lines = append(lines, line)
 		}
 	}
-	for _, warn := range sr.GetWarnings() {
+	return lines
+}
+
+func warningLines(warnings []*controlapi.VertexWarning) []string {
+	lines := make([]string, 0)
+	for _, warn := range warnings {
 		short := strings.TrimSpace(string(warn.GetShort()))
 		if short != "" {
 			lines = append(lines, "warning: "+short)
@@ -325,13 +402,10 @@ func decodeBuildkitTrace(raw json.RawMessage) ([]string, bool) {
 			}
 		}
 	}
-	if len(lines) == 0 {
-		return nil, false
-	}
-	return lines, true
+	return lines
 }
 
-func statusEmoji(status string) string {
+func StatusEmoji(status string) string {
 	switch {
 	case strings.HasPrefix(status, "Pulling"):
 		return "📥"
@@ -344,20 +418,20 @@ func statusEmoji(status string) string {
 	}
 }
 
-func labelFor(id, status string) string {
+func LabelFor(id, status string) string {
 	if id == "" {
 		return ""
 	}
-	if looksNumeric(id) && strings.HasPrefix(status, "Pulling from") {
+	if LooksNumeric(id) && strings.HasPrefix(status, "Pulling from") {
 		return ""
 	}
-	if looksLayerID(id) {
+	if LooksLayerID(id) {
 		return "layer " + id + ":"
 	}
 	return id + ":"
 }
 
-func looksNumeric(s string) bool {
+func LooksNumeric(s string) bool {
 	for _, r := range s {
 		if r < '0' || r > '9' {
 			return false
@@ -366,8 +440,8 @@ func looksNumeric(s string) bool {
 	return s != ""
 }
 
-func looksLayerID(s string) bool {
-	if len(s) < 12 {
+func LooksLayerID(s string) bool {
+	if len(s) < minLayerIDLength {
 		return false
 	}
 	for _, r := range s {

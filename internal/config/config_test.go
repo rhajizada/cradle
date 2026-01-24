@@ -1,9 +1,11 @@
-package config
+package config_test
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/rhajizada/cradle/internal/config"
 )
 
 func TestLoadFileResolvesPaths(t *testing.T) {
@@ -26,7 +28,7 @@ aliases:
 		t.Fatalf("write config: %v", err)
 	}
 
-	cfg, err := LoadFile(cfgPath)
+	cfg, err := config.LoadFile(cfgPath)
 	if err != nil {
 		t.Fatalf("LoadFile error: %v", err)
 	}
@@ -66,17 +68,17 @@ aliases:
 		t.Fatalf("write config: %v", err)
 	}
 
-	if _, err := LoadFile(cfgPath); err == nil {
+	if _, err := config.LoadFile(cfgPath); err == nil {
 		t.Fatalf("expected error for unknown field")
 	}
 }
 
 func TestValidateUIDGID(t *testing.T) {
-	cfg := &Config{
-		Aliases: map[string]Alias{
+	cfg := &config.Config{
+		Aliases: map[string]config.Alias{
 			"demo": {
-				Image: ImageSpec{Pull: &PullSpec{Ref: "ubuntu:24.04"}},
-				Run:   RunSpec{UID: 1000},
+				Image: config.ImageSpec{Pull: &config.PullSpec{Ref: "ubuntu:24.04"}},
+				Run:   config.RunSpec{UID: 1000},
 			},
 		},
 	}
@@ -86,12 +88,12 @@ func TestValidateUIDGID(t *testing.T) {
 }
 
 func TestValidateMountType(t *testing.T) {
-	cfg := &Config{
-		Aliases: map[string]Alias{
+	cfg := &config.Config{
+		Aliases: map[string]config.Alias{
 			"demo": {
-				Image: ImageSpec{Pull: &PullSpec{Ref: "ubuntu:24.04"}},
-				Run: RunSpec{
-					Mounts: []MountSpec{{Type: "bad", Target: "/x"}},
+				Image: config.ImageSpec{Pull: &config.PullSpec{Ref: "ubuntu:24.04"}},
+				Run: config.RunSpec{
+					Mounts: []config.MountSpec{{Type: "bad", Target: "/x"}},
 				},
 			},
 		},
@@ -102,8 +104,8 @@ func TestValidateMountType(t *testing.T) {
 }
 
 func TestValidateImageSpecErrors(t *testing.T) {
-	cfg := &Config{
-		Aliases: map[string]Alias{
+	cfg := &config.Config{
+		Aliases: map[string]config.Alias{
 			"demo": {},
 		},
 	}
@@ -111,12 +113,12 @@ func TestValidateImageSpecErrors(t *testing.T) {
 		t.Fatalf("expected error for missing image spec")
 	}
 
-	cfg = &Config{
-		Aliases: map[string]Alias{
+	cfg = &config.Config{
+		Aliases: map[string]config.Alias{
 			"demo": {
-				Image: ImageSpec{
-					Pull:  &PullSpec{Ref: "ubuntu:24.04"},
-					Build: &BuildSpec{Cwd: "/tmp"},
+				Image: config.ImageSpec{
+					Pull:  &config.PullSpec{Ref: "ubuntu:24.04"},
+					Build: &config.BuildSpec{Cwd: "/tmp"},
 				},
 			},
 		},
@@ -125,10 +127,10 @@ func TestValidateImageSpecErrors(t *testing.T) {
 		t.Fatalf("expected error for pull+build")
 	}
 
-	cfg = &Config{
-		Aliases: map[string]Alias{
+	cfg = &config.Config{
+		Aliases: map[string]config.Alias{
 			"demo": {
-				Image: ImageSpec{Pull: &PullSpec{Ref: ""}},
+				Image: config.ImageSpec{Pull: &config.PullSpec{Ref: ""}},
 			},
 		},
 	}
@@ -136,10 +138,10 @@ func TestValidateImageSpecErrors(t *testing.T) {
 		t.Fatalf("expected error for empty pull ref")
 	}
 
-	cfg = &Config{
-		Aliases: map[string]Alias{
+	cfg = &config.Config{
+		Aliases: map[string]config.Alias{
 			"demo": {
-				Image: ImageSpec{Build: &BuildSpec{Cwd: ""}},
+				Image: config.ImageSpec{Build: &config.BuildSpec{Cwd: ""}},
 			},
 		},
 	}

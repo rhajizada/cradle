@@ -42,7 +42,7 @@ func (h *Handler) Handle(_ context.Context, r slog.Record) error {
 	var b strings.Builder
 	emoji, label, color := LevelStyle(r.Level)
 	if h.color {
-		fmt.Fprintf(&b, "%s%s%s %s%s%s",
+		fmt.Fprintf(&b, "%s%s %s%s %s%s",
 			color,
 			emoji,
 			label,
@@ -51,7 +51,7 @@ func (h *Handler) Handle(_ context.Context, r slog.Record) error {
 			ansiReset,
 		)
 	} else {
-		fmt.Fprintf(&b, "%s%s %s", emoji, label, r.Message)
+		fmt.Fprintf(&b, "%s %s %s", emoji, label, r.Message)
 	}
 
 	allAttrs := append([]slog.Attr{}, h.attrs...)

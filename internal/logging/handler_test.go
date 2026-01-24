@@ -24,7 +24,7 @@ func TestHandlerFormatsMessage(t *testing.T) {
 	if got == "" {
 		t.Fatalf("expected output")
 	}
-	if want := "✅INFO hello user=alice\n"; got != want {
+	if want := "✅ INFO hello user=alice\n"; got != want {
 		t.Fatalf("unexpected output: %q", got)
 	}
 }
@@ -35,7 +35,7 @@ func TestHandlerGroupsAndLevels(t *testing.T) {
 	logger := slog.New(h.WithGroup("grp"))
 
 	logger.Debug("dbg", "k", "v")
-	if got := buf.String(); got != "🐛DEBUG dbg grp.k=v\n" {
+	if got := buf.String(); got != "🐛 DEBUG dbg grp.k=v\n" {
 		t.Fatalf("unexpected output: %q", got)
 	}
 }
@@ -46,7 +46,7 @@ func TestHandlerWithAttrs(t *testing.T) {
 	logger := slog.New(h.WithAttrs([]slog.Attr{slog.String("app", "cradle")}))
 
 	logger.Info("hello")
-	if got := buf.String(); got != "✅INFO hello app=cradle\n" {
+	if got := buf.String(); got != "✅ INFO hello app=cradle\n" {
 		t.Fatalf("unexpected output: %q", got)
 	}
 }

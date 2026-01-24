@@ -32,8 +32,10 @@ func ExpandEnv(s string) (string, error) {
 	return b.String(), nil
 }
 
-const braceOffset = 2
-const escapeTokenLength = 2
+const (
+	braceOffset       = 2
+	escapeTokenLength = 2
+)
 
 func appendChunk(s string, i int, b *strings.Builder) (int, error) {
 	if isEscapedDollar(s, i) {

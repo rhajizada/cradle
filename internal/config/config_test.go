@@ -150,6 +150,68 @@ func TestValidateImageSpecErrors(t *testing.T) {
 	}
 }
 
+func TestValidateImagePolicyDefaults(t *testing.T) {
+	cfg := &config.Config{Aliases: map[string]config.Alias{
+		"pull":  {Image: config.ImageSpec{Pull: &config.PullSpec{Ref: "ubuntu:24.04"}}},
+		"build": {Image: config.ImageSpec{Build: &config.BuildSpec{Cwd: "/tmp"}}},
+	}}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("Validate error: %v", err)
+	}
+	if cfg.Aliases["pull"].Image.Pull.Policy != config.ImagePolicyAlways {
+		t.Fatalf("expected pull policy default to always")
+	}
+	if cfg.Aliases["build"].Image.Build.Policy != config.ImagePolicyAlways {
+		t.Fatalf("expected build policy default to always")
+	}
+}
+
+func TestValidateImagePolicyInvalid(t *testing.T) {
+	cfg := &config.Config{Aliases: map[string]config.Alias{
+		"pull": {Image: config.ImageSpec{Pull: &config.PullSpec{Ref: "ubuntu:24.04", Policy: "bad"}}},
+	}}
+	if err := cfg.Validate(); err == nil {
+		t.Fatalf("expected error for invalid pull policy")
+	}
+
+	cfg = &config.Config{Aliases: map[string]config.Alias{
+		"build": {Image: config.ImageSpec{Build: &config.BuildSpec{Cwd: "/tmp", Policy: "bad"}}},
+	}}
+	if err := cfg.Validate(); err == nil {
+		t.Fatalf("expected error for invalid build policy")
+	}
+}
+
+func TestValidateImagePolicyValues(t *testing.T) {
+	cfg := &config.Config{Aliases: map[string]config.Alias{
+		"pull": {
+			Image: config.ImageSpec{
+				Pull: &config.PullSpec{
+					Ref:    "ubuntu:24.04",
+					Policy: config.ImagePolicyIfMissing,
+				},
+			},
+		},
+		"build": {
+			Image: config.ImageSpec{
+				Build: &config.BuildSpec{
+					Cwd:    "/tmp",
+					Policy: config.ImagePolicyNever,
+				},
+			},
+		},
+	}}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("Validate error: %v", err)
+	}
+	if cfg.Aliases["pull"].Image.Pull.Policy != config.ImagePolicyIfMissing {
+		t.Fatalf("expected pull policy if_missing")
+	}
+	if cfg.Aliases["build"].Image.Build.Policy != config.ImagePolicyNever {
+		t.Fatalf("expected build policy never")
+	}
+}
+
 func TestLoadFileBuildOptionsExtended(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "config.yaml")

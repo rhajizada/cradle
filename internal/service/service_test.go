@@ -55,14 +55,14 @@ func TestAliasInfoErrors(t *testing.T) {
 
 func TestEnsureImageErrors(t *testing.T) {
 	s := service.NewWithClient(&config.Config{Aliases: map[string]config.Alias{}}, nil)
-	if _, err := s.EnsureImage(context.Background(), "missing", nil); err == nil {
+	if _, err := s.EnsureImage(context.Background(), "missing", nil, service.ImagePolicyOverrides{}); err == nil {
 		t.Fatalf("expected error for unknown alias")
 	}
 
 	s = service.NewWithClient(&config.Config{Aliases: map[string]config.Alias{
 		"demo": {},
 	}}, nil)
-	if _, err := s.EnsureImage(context.Background(), "demo", nil); err == nil {
+	if _, err := s.EnsureImage(context.Background(), "demo", nil, service.ImagePolicyOverrides{}); err == nil {
 		t.Fatalf("expected error for alias with no image")
 	}
 }

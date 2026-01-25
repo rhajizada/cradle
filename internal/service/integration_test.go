@@ -137,13 +137,13 @@ func TestRunReusesContainer(t *testing.T) {
 		)
 	}()
 
-	first, err := svc.Run(ctx, alias, io.Discard)
+	first, err := svc.Run(ctx, alias, io.Discard, service.ImagePolicyOverrides{})
 	if err != nil {
 		t.Fatalf("first run: %v", err)
 	}
 	waitForExit(t, cli, first.ID)
 
-	second, err := svc.Run(ctx, alias, io.Discard)
+	second, err := svc.Run(ctx, alias, io.Discard, service.ImagePolicyOverrides{})
 	if err != nil {
 		t.Fatalf("second run: %v", err)
 	}
@@ -165,7 +165,7 @@ func TestRunReusesContainer(t *testing.T) {
 		},
 	}
 
-	third, err := svc.Run(ctx, alias, io.Discard)
+	third, err := svc.Run(ctx, alias, io.Discard, service.ImagePolicyOverrides{})
 	if err != nil {
 		t.Fatalf("third run: %v", err)
 	}
@@ -247,7 +247,7 @@ func TestStopRunningContainer(t *testing.T) {
 		_, _ = cli.ContainerRemove(context.Background(), name, client.ContainerRemoveOptions{Force: true})
 	}()
 
-	run, err := svc.Run(context.Background(), "sleep", io.Discard)
+	run, err := svc.Run(context.Background(), "sleep", io.Discard, service.ImagePolicyOverrides{})
 	if err != nil {
 		t.Fatalf("run error: %v", err)
 	}

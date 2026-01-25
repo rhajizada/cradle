@@ -29,8 +29,18 @@ type ImageSpec struct {
 	Build *BuildSpec `json:"build,omitempty" yaml:"build,omitempty"`
 }
 
+type ImagePolicy string
+
+const (
+	ImagePolicyAlways    ImagePolicy = "always"
+	ImagePolicyIfMissing ImagePolicy = "if_missing"
+	ImagePolicyNever     ImagePolicy = "never"
+)
+
 type PullSpec struct {
-	Ref string `json:"ref" yaml:"ref"` // e.g. ubuntu:24.04
+	Ref    string      `json:"ref"              yaml:"ref"`
+	Policy ImagePolicy `json:"policy,omitempty" yaml:"policy,omitempty"`
+	// e.g. ubuntu:24.04
 	// Optional: later you can add platform, auth, etc.
 }
 
@@ -40,6 +50,7 @@ type BuildSpec struct {
 	Args       map[string]string `json:"args,omitempty"       yaml:"args,omitempty"`
 	Target     string            `json:"target,omitempty"     yaml:"target,omitempty"`
 	Labels     map[string]string `json:"labels,omitempty"     yaml:"labels,omitempty"`
+	Policy     ImagePolicy       `json:"policy,omitempty"     yaml:"policy,omitempty"`
 
 	PullParent bool     `json:"pull,omitempty"       yaml:"pull,omitempty"` // maps to PullParent
 	NoCache    bool     `json:"no_cache,omitempty"   yaml:"no_cache,omitempty"`
@@ -265,10 +276,22 @@ func validateImage(name string, alias *Alias, baseDir string) error {
 	if alias.Image.Pull != nil && alias.Image.Pull.Ref == "" {
 		return fmt.Errorf("aliases.%s.image.pull.ref: required", name)
 	}
+	if alias.Image.Pull != nil {
+		policy, err := normalizeImagePolicy(alias.Image.Pull.Policy, ImagePolicyAlways)
+		if err != nil {
+			return fmt.Errorf("aliases.%s.image.pull.policy: %w", name, err)
+		}
+		alias.Image.Pull.Policy = policy
+	}
 
 	if alias.Image.Build == nil {
 		return nil
 	}
+	policy, err := normalizeImagePolicy(alias.Image.Build.Policy, ImagePolicyAlways)
+	if err != nil {
+		return fmt.Errorf("aliases.%s.image.build.policy: %w", name, err)
+	}
+	alias.Image.Build.Policy = policy
 
 	if alias.Image.Build.Cwd == "" && alias.Image.Build.RemoteContext == "" {
 		return fmt.Errorf("aliases.%s.image.build.cwd: required when remote_context is empty", name)
@@ -282,6 +305,18 @@ func validateImage(name string, alias *Alias, baseDir string) error {
 	}
 
 	return nil
+}
+
+func normalizeImagePolicy(value ImagePolicy, defaultPolicy ImagePolicy) (ImagePolicy, error) {
+	if value == "" {
+		return defaultPolicy, nil
+	}
+	switch value {
+	case ImagePolicyAlways, ImagePolicyIfMissing, ImagePolicyNever:
+		return value, nil
+	default:
+		return "", fmt.Errorf("invalid policy %q", value)
+	}
 }
 
 func validateRun(name string, alias *Alias, baseDir string) error {

@@ -56,10 +56,10 @@ Run:
 
 | Command        | Description                              |
 | -------------- | ---------------------------------------- |
-| `build`        | Pull or build images                     |
-| `ls`           | List aliases with image/container status |
-| `run <alias>`  | Run alias                                |
-| `stop <alias>` | Stop alias container                     |
+| `build`        | Pull or build images (use `--build`/`--pull` to force) |
+| `ls`           | List aliases with image/container status             |
+| `run <alias>`  | Run alias (use `--build`/`--pull` to force)           |
+| `stop <alias>` | Stop alias container                                 |
 
 ## Docs & References
 

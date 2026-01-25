@@ -62,3 +62,24 @@ func TestCommandRunEConfigError(t *testing.T) {
 		t.Fatalf("expected stop command to fail with bad config path")
 	}
 }
+
+func TestCommandFlags(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	cfgPath := ""
+
+	buildCmd := cli.NewBuildCmd(&cfgPath, log)
+	if buildCmd.Flags().Lookup("build") == nil {
+		t.Fatalf("expected build flag on build command")
+	}
+	if buildCmd.Flags().Lookup("pull") == nil {
+		t.Fatalf("expected pull flag on build command")
+	}
+
+	runCmd := cli.NewRunCmd(&cfgPath, log)
+	if runCmd.Flags().Lookup("build") == nil {
+		t.Fatalf("expected build flag on run command")
+	}
+	if runCmd.Flags().Lookup("pull") == nil {
+		t.Fatalf("expected pull flag on run command")
+	}
+}

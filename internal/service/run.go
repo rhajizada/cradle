@@ -65,13 +65,18 @@ type runFlags struct {
 	attach     bool
 }
 
-func (s *Service) Run(ctx context.Context, alias string, out io.Writer) (*RunResult, error) {
+func (s *Service) Run(
+	ctx context.Context,
+	alias string,
+	out io.Writer,
+	overrides ImagePolicyOverrides,
+) (*RunResult, error) {
 	a, found := s.cfg.Aliases[alias]
 	if !found {
 		return nil, fmt.Errorf("unknown alias %q", alias)
 	}
 
-	imageRef, err := s.EnsureImage(ctx, alias, out)
+	imageRef, err := s.EnsureImage(ctx, alias, out, overrides)
 	if err != nil {
 		return nil, err
 	}

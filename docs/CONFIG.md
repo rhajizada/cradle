@@ -63,11 +63,13 @@ Exactly one of `pull` or `build` is required.
 
 - `ref` (string, required) - image reference.
   Example: `ref: ubuntu:24.04`
+- `policy` (string, optional) - `always|if_missing|never` (default `always`).
 
 #### image.build
 
 - `cwd` (string, required unless `remote_context` is set) - build context directory.
   Example: `cwd: ./images/devbox`
+- `policy` (string, optional) - `always|if_missing|never` (default `always`).
 - `dockerfile` (string, optional) - defaults to `Dockerfile`.
   Example: `dockerfile: Dockerfile.dev`
 - `args` (map, optional) - build args.

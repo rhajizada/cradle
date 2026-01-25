@@ -41,7 +41,10 @@ func NewApp(cfgPath string, log *slog.Logger) (*App, error) {
 }
 
 func NewBuildCmd(cfgPath *string, log *slog.Logger) *cobra.Command {
-	return &cobra.Command{
+	var forceBuild bool
+	var forcePull bool
+
+	cmd := &cobra.Command{
 		Use:   "build <alias|all>",
 		Short: "Build or pull images",
 		Args:  cobra.ExactArgs(1),
@@ -56,11 +59,21 @@ func NewBuildCmd(cfgPath *string, log *slog.Logger) *cobra.Command {
 				}
 			}()
 
+			overrides := service.ImagePolicyOverrides{}
+			if forceBuild {
+				policy := config.ImagePolicyAlways
+				overrides.Build = &policy
+			}
+			if forcePull {
+				policy := config.ImagePolicyAlways
+				overrides.Pull = &policy
+			}
+
 			target := args[0]
 			if target == "all" {
 				for _, info := range app.Svc.ListAliases() {
 					app.Renderer.BuildStart(info)
-					if buildErr := app.Svc.Build(cmd.Context(), info.Name, os.Stdout); buildErr != nil {
+					if buildErr := app.Svc.Build(cmd.Context(), info.Name, os.Stdout, overrides); buildErr != nil {
 						return fmt.Errorf("build %s: %w", info.Name, buildErr)
 					}
 				}
@@ -72,9 +85,13 @@ func NewBuildCmd(cfgPath *string, log *slog.Logger) *cobra.Command {
 				return err
 			}
 			app.Renderer.BuildStart(info)
-			return app.Svc.Build(cmd.Context(), target, os.Stdout)
+			return app.Svc.Build(cmd.Context(), target, os.Stdout, overrides)
 		},
 	}
+
+	cmd.Flags().BoolVar(&forceBuild, "build", false, "force build images")
+	cmd.Flags().BoolVar(&forcePull, "pull", false, "force pull images")
+	return cmd
 }
 
 func NewLsCmd(cfgPath *string, log *slog.Logger) *cobra.Command {
@@ -103,7 +120,10 @@ func NewLsCmd(cfgPath *string, log *slog.Logger) *cobra.Command {
 }
 
 func NewRunCmd(cfgPath *string, log *slog.Logger) *cobra.Command {
-	return &cobra.Command{
+	var forceBuild bool
+	var forcePull bool
+
+	cmd := &cobra.Command{
 		Use:   "run <alias>",
 		Short: "Run alias interactively",
 		Args:  cobra.ExactArgs(1),
@@ -126,8 +146,17 @@ func NewRunCmd(cfgPath *string, log *slog.Logger) *cobra.Command {
 				return err
 			}
 			app.Renderer.BuildStart(info)
+			overrides := service.ImagePolicyOverrides{}
+			if forceBuild {
+				policy := config.ImagePolicyAlways
+				overrides.Build = &policy
+			}
+			if forcePull {
+				policy := config.ImagePolicyAlways
+				overrides.Pull = &policy
+			}
 
-			result, err := app.Svc.Run(ctx, args[0], os.Stdout)
+			result, err := app.Svc.Run(ctx, args[0], os.Stdout, overrides)
 			if err != nil {
 				return err
 			}
@@ -146,6 +175,10 @@ func NewRunCmd(cfgPath *string, log *slog.Logger) *cobra.Command {
 			return app.Svc.AttachAndWait(ctx, attachOpts)
 		},
 	}
+
+	cmd.Flags().BoolVar(&forceBuild, "build", false, "force build images")
+	cmd.Flags().BoolVar(&forcePull, "pull", false, "force pull images")
+	return cmd
 }
 
 func NewStopCmd(cfgPath *string, log *slog.Logger) *cobra.Command {

@@ -3,6 +3,7 @@ package service
 import (
 	"bufio"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -30,8 +31,14 @@ const (
 	minLayerIDLength    = 12
 )
 
-func pullImage(ctx context.Context, cli *client.Client, ref string, out io.Writer) (err error) {
-	resp, err := cli.ImagePull(ctx, ref, client.ImagePullOptions{})
+func pullImage(
+	ctx context.Context,
+	cli *client.Client,
+	ref string,
+	opts client.ImagePullOptions,
+	out io.Writer,
+) (err error) {
+	resp, err := cli.ImagePull(ctx, ref, opts)
 	if err != nil {
 		return err
 	}
@@ -42,6 +49,29 @@ func pullImage(ctx context.Context, cli *client.Client, ref string, out io.Write
 	}()
 
 	return renderDockerJSON(out, resp)
+}
+
+func PullOptionsFromSpec(spec *config.PullSpec) (client.ImagePullOptions, error) {
+	if spec == nil {
+		return client.ImagePullOptions{}, errors.New("missing pull spec")
+	}
+	options := client.ImagePullOptions{}
+	if spec.Platform != "" {
+		platform, err := ParsePlatform(spec.Platform)
+		if err != nil {
+			return options, err
+		}
+		options.Platforms = []ocispec.Platform{*platform}
+	}
+	if spec.Auth == nil {
+		return options, nil
+	}
+	authJSON, err := json.Marshal(registryAuthConfig(*spec.Auth))
+	if err != nil {
+		return options, err
+	}
+	options.RegistryAuth = base64.StdEncoding.EncodeToString(authJSON)
+	return options, nil
 }
 
 func buildImage(ctx context.Context, cli *client.Client, b *config.BuildSpec, tag string, out io.Writer) error {
@@ -227,22 +257,26 @@ func buildUlimits(specs []config.UlimitSpec) []*container.Ulimit {
 	return ulimits
 }
 
-func buildAuthConfigs(specs map[string]config.BuildAuthConfig) map[string]registry.AuthConfig {
+func buildAuthConfigs(specs map[string]config.RegistryAuthSpec) map[string]registry.AuthConfig {
 	if len(specs) == 0 {
 		return nil
 	}
 	authConfigs := make(map[string]registry.AuthConfig, len(specs))
 	for host, spec := range specs {
-		authConfigs[host] = registry.AuthConfig{
-			Username:      spec.Username,
-			Password:      spec.Password,
-			Auth:          spec.Auth,
-			ServerAddress: spec.ServerAddress,
-			IdentityToken: spec.IdentityToken,
-			RegistryToken: spec.RegistryToken,
-		}
+		authConfigs[host] = registryAuthConfig(spec)
 	}
 	return authConfigs
+}
+
+func registryAuthConfig(spec config.RegistryAuthSpec) registry.AuthConfig {
+	return registry.AuthConfig{
+		Username:      spec.Username,
+		Password:      spec.Password,
+		Auth:          spec.Auth,
+		ServerAddress: spec.ServerAddress,
+		IdentityToken: spec.IdentityToken,
+		RegistryToken: spec.RegistryToken,
+	}
 }
 
 func buildOutputs(specs []config.BuildOutputSpec) []client.ImageBuildOutput {

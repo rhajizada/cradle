@@ -38,10 +38,11 @@ const (
 )
 
 type PullSpec struct {
-	Ref    string      `json:"ref"              yaml:"ref"`
-	Policy ImagePolicy `json:"policy,omitempty" yaml:"policy,omitempty"`
+	Ref      string            `json:"ref"                yaml:"ref"`
+	Policy   ImagePolicy       `json:"policy,omitempty"   yaml:"policy,omitempty"`
+	Platform string            `json:"platform,omitempty" yaml:"platform,omitempty"`
+	Auth     *RegistryAuthSpec `json:"auth,omitempty"     yaml:"auth,omitempty"`
 	// e.g. ubuntu:24.04
-	// Optional: later you can add platform, auth, etc.
 }
 
 type BuildSpec struct {
@@ -56,27 +57,27 @@ type BuildSpec struct {
 	NoCache    bool     `json:"no_cache,omitempty"   yaml:"no_cache,omitempty"`
 	CacheFrom  []string `json:"cache_from,omitempty" yaml:"cache_from,omitempty"`
 
-	Tags           []string                   `json:"tags,omitempty"            yaml:"tags,omitempty"`
-	SuppressOutput bool                       `json:"suppress_output,omitempty" yaml:"suppress_output,omitempty"`
-	RemoteContext  string                     `json:"remote_context,omitempty"  yaml:"remote_context,omitempty"`
-	Remove         *bool                      `json:"remove,omitempty"          yaml:"remove,omitempty"`
-	ForceRemove    *bool                      `json:"force_remove,omitempty"    yaml:"force_remove,omitempty"`
-	Isolation      string                     `json:"isolation,omitempty"       yaml:"isolation,omitempty"`
-	CPUSetCPUs     string                     `json:"cpuset_cpus,omitempty"     yaml:"cpuset_cpus,omitempty"`
-	CPUSetMems     string                     `json:"cpuset_mems,omitempty"     yaml:"cpuset_mems,omitempty"`
-	CPUShares      int64                      `json:"cpu_shares,omitempty"      yaml:"cpu_shares,omitempty"`
-	CPUQuota       int64                      `json:"cpu_quota,omitempty"       yaml:"cpu_quota,omitempty"`
-	CPUPeriod      int64                      `json:"cpu_period,omitempty"      yaml:"cpu_period,omitempty"`
-	Memory         int64                      `json:"memory,omitempty"          yaml:"memory,omitempty"`
-	MemorySwap     int64                      `json:"memory_swap,omitempty"     yaml:"memory_swap,omitempty"`
-	CgroupParent   string                     `json:"cgroup_parent,omitempty"   yaml:"cgroup_parent,omitempty"`
-	ShmSize        int64                      `json:"shm_size,omitempty"        yaml:"shm_size,omitempty"`
-	Ulimits        []UlimitSpec               `json:"ulimits,omitempty"         yaml:"ulimits,omitempty"`
-	AuthConfigs    map[string]BuildAuthConfig `json:"auth_configs,omitempty"    yaml:"auth_configs,omitempty"`
-	Squash         bool                       `json:"squash,omitempty"          yaml:"squash,omitempty"`
-	SecurityOpt    []string                   `json:"security_opt,omitempty"    yaml:"security_opt,omitempty"`
-	BuildID        string                     `json:"build_id,omitempty"        yaml:"build_id,omitempty"`
-	Outputs        []BuildOutputSpec          `json:"outputs,omitempty"         yaml:"outputs,omitempty"`
+	Tags           []string                    `json:"tags,omitempty"            yaml:"tags,omitempty"`
+	SuppressOutput bool                        `json:"suppress_output,omitempty" yaml:"suppress_output,omitempty"`
+	RemoteContext  string                      `json:"remote_context,omitempty"  yaml:"remote_context,omitempty"`
+	Remove         *bool                       `json:"remove,omitempty"          yaml:"remove,omitempty"`
+	ForceRemove    *bool                       `json:"force_remove,omitempty"    yaml:"force_remove,omitempty"`
+	Isolation      string                      `json:"isolation,omitempty"       yaml:"isolation,omitempty"`
+	CPUSetCPUs     string                      `json:"cpuset_cpus,omitempty"     yaml:"cpuset_cpus,omitempty"`
+	CPUSetMems     string                      `json:"cpuset_mems,omitempty"     yaml:"cpuset_mems,omitempty"`
+	CPUShares      int64                       `json:"cpu_shares,omitempty"      yaml:"cpu_shares,omitempty"`
+	CPUQuota       int64                       `json:"cpu_quota,omitempty"       yaml:"cpu_quota,omitempty"`
+	CPUPeriod      int64                       `json:"cpu_period,omitempty"      yaml:"cpu_period,omitempty"`
+	Memory         int64                       `json:"memory,omitempty"          yaml:"memory,omitempty"`
+	MemorySwap     int64                       `json:"memory_swap,omitempty"     yaml:"memory_swap,omitempty"`
+	CgroupParent   string                      `json:"cgroup_parent,omitempty"   yaml:"cgroup_parent,omitempty"`
+	ShmSize        int64                       `json:"shm_size,omitempty"        yaml:"shm_size,omitempty"`
+	Ulimits        []UlimitSpec                `json:"ulimits,omitempty"         yaml:"ulimits,omitempty"`
+	AuthConfigs    map[string]RegistryAuthSpec `json:"auth_configs,omitempty"    yaml:"auth_configs,omitempty"`
+	Squash         bool                        `json:"squash,omitempty"          yaml:"squash,omitempty"`
+	SecurityOpt    []string                    `json:"security_opt,omitempty"    yaml:"security_opt,omitempty"`
+	BuildID        string                      `json:"build_id,omitempty"        yaml:"build_id,omitempty"`
+	Outputs        []BuildOutputSpec           `json:"outputs,omitempty"         yaml:"outputs,omitempty"`
 
 	Network    string   `json:"network,omitempty"     yaml:"network,omitempty"`     // e.g. "host"
 	ExtraHosts []string `json:"extra_hosts,omitempty" yaml:"extra_hosts,omitempty"` // ["host.docker.internal:host-gateway"]
@@ -90,7 +91,7 @@ type UlimitSpec struct {
 	Hard int64  `json:"hard,omitempty" yaml:"hard,omitempty"`
 }
 
-type BuildAuthConfig struct {
+type RegistryAuthSpec struct {
 	Username      string `json:"username,omitempty"       yaml:"username,omitempty"`
 	Password      string `json:"password,omitempty"       yaml:"password,omitempty"`
 	Auth          string `json:"auth,omitempty"           yaml:"auth,omitempty"`

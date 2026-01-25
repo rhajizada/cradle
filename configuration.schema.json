@@ -23,6 +23,36 @@
                   },
                   "policy": {
                     "type": "string"
+                  },
+                  "platform": {
+                    "type": "string"
+                  },
+                  "auth": {
+                    "type": [
+                      "null",
+                      "object"
+                    ],
+                    "properties": {
+                      "username": {
+                        "type": "string"
+                      },
+                      "password": {
+                        "type": "string"
+                      },
+                      "auth": {
+                        "type": "string"
+                      },
+                      "server_address": {
+                        "type": "string"
+                      },
+                      "identity_token": {
+                        "type": "string"
+                      },
+                      "registry_token": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
                   }
                 },
                 "required": [

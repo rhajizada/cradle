@@ -110,7 +110,7 @@ func (s *Service) Build(ctx context.Context, alias string, out io.Writer, overri
 	if a.Image.Pull != nil {
 		ref := NormalizeImageRef(a.Image.Pull.Ref)
 		policy := resolveImagePolicy(a.Image.Pull.Policy, overrides.Pull)
-		return s.ensurePull(ctx, ref, out, policy)
+		return s.ensurePull(ctx, a.Image.Pull, ref, out, policy)
 	}
 	if a.Image.Build != nil {
 		policy := resolveImagePolicy(a.Image.Build.Policy, overrides.Build)
@@ -133,7 +133,7 @@ func (s *Service) EnsureImage(
 	if a.Image.Pull != nil {
 		ref := NormalizeImageRef(a.Image.Pull.Ref)
 		policy := resolveImagePolicy(a.Image.Pull.Policy, overrides.Pull)
-		if err := s.ensurePull(ctx, ref, out, policy); err != nil {
+		if err := s.ensurePull(ctx, a.Image.Pull, ref, out, policy); err != nil {
 			return "", err
 		}
 		return ref, nil
@@ -163,6 +163,7 @@ func resolveImagePolicy(policy config.ImagePolicy, override *config.ImagePolicy)
 
 func (s *Service) ensurePull(
 	ctx context.Context,
+	spec *config.PullSpec,
 	ref string,
 	out io.Writer,
 	policy config.ImagePolicy,
@@ -171,14 +172,18 @@ func (s *Service) ensurePull(
 	if err != nil {
 		return err
 	}
+	options, err := PullOptionsFromSpec(spec)
+	if err != nil {
+		return err
+	}
 	switch policy {
 	case config.ImagePolicyAlways:
-		return pullImage(ctx, s.cli, ref, out)
+		return pullImage(ctx, s.cli, ref, options, out)
 	case config.ImagePolicyIfMissing:
 		if exists {
 			return nil
 		}
-		return pullImage(ctx, s.cli, ref, out)
+		return pullImage(ctx, s.cli, ref, options, out)
 	case config.ImagePolicyNever:
 		if exists {
 			return nil

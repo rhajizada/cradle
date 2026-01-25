@@ -64,6 +64,8 @@ Exactly one of `pull` or `build` is required.
 - `ref` (string, required) - image reference.
   Example: `ref: ubuntu:24.04`
 - `policy` (string, optional) - `always|if_missing|never` (default `always`).
+- `platform` (string, optional) - platform `os/arch[/variant]`.
+- `auth` (object, optional) - registry auth.
 
 #### image.build
 
@@ -143,6 +145,7 @@ Exactly one of `pull` or `build` is required.
       username: ${GITHUB_USER}
       password: ${GITHUB_TOKEN}
   ```
+  Auth fields: `username`, `password`, `auth`, `server_address`, `identity_token`, `registry_token`.
 - `squash` (bool, optional) - squash build layers.
 - `security_opt` (list, optional) - security options.
 - `build_id` (string, optional) - build identifier for cancellation.

@@ -52,7 +52,7 @@ func TestBuildOptionsFromSpecOverrides(t *testing.T) {
 			Soft: 1024,
 			Hard: 2048,
 		}},
-		AuthConfigs: map[string]config.BuildAuthConfig{
+		AuthConfigs: map[string]config.RegistryAuthSpec{
 			"ghcr.io": {
 				Username:      "demo",
 				Password:      "secret",

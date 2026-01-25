@@ -327,6 +327,45 @@ aliases:
 	}
 }
 
+func TestLoadFilePullPlatformAuth(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	content := `
+version: 1
+aliases:
+  demo:
+    image:
+      pull:
+        ref: ghcr.io/org/app:latest
+        platform: linux/amd64
+        auth:
+          username: demo
+          password: secret
+          server_address: ghcr.io
+    run:
+      cmd: ["/bin/true"]
+`
+	if err := os.WriteFile(cfgPath, []byte(content), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	cfg, err := config.LoadFile(cfgPath)
+	if err != nil {
+		t.Fatalf("LoadFile error: %v", err)
+	}
+
+	pull := cfg.Aliases["demo"].Image.Pull
+	if pull == nil {
+		t.Fatalf("expected pull spec")
+	}
+	if pull.Platform != "linux/amd64" {
+		t.Fatalf("unexpected platform: %q", pull.Platform)
+	}
+	if pull.Auth == nil || pull.Auth.Username != "demo" || pull.Auth.Password != "secret" {
+		t.Fatalf("unexpected auth: %+v", pull.Auth)
+	}
+}
+
 func TestLoadFileRunComposeFields(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "config.yaml")

@@ -45,11 +45,52 @@ type BuildSpec struct {
 	NoCache    bool     `json:"no_cache,omitempty"   yaml:"no_cache,omitempty"`
 	CacheFrom  []string `json:"cache_from,omitempty" yaml:"cache_from,omitempty"`
 
-	// Keep minimal; add more only when you actually need them.
+	Tags           []string                   `json:"tags,omitempty"            yaml:"tags,omitempty"`
+	SuppressOutput bool                       `json:"suppress_output,omitempty" yaml:"suppress_output,omitempty"`
+	RemoteContext  string                     `json:"remote_context,omitempty"  yaml:"remote_context,omitempty"`
+	Remove         *bool                      `json:"remove,omitempty"          yaml:"remove,omitempty"`
+	ForceRemove    *bool                      `json:"force_remove,omitempty"    yaml:"force_remove,omitempty"`
+	Isolation      string                     `json:"isolation,omitempty"       yaml:"isolation,omitempty"`
+	CPUSetCPUs     string                     `json:"cpuset_cpus,omitempty"     yaml:"cpuset_cpus,omitempty"`
+	CPUSetMems     string                     `json:"cpuset_mems,omitempty"     yaml:"cpuset_mems,omitempty"`
+	CPUShares      int64                      `json:"cpu_shares,omitempty"      yaml:"cpu_shares,omitempty"`
+	CPUQuota       int64                      `json:"cpu_quota,omitempty"       yaml:"cpu_quota,omitempty"`
+	CPUPeriod      int64                      `json:"cpu_period,omitempty"      yaml:"cpu_period,omitempty"`
+	Memory         int64                      `json:"memory,omitempty"          yaml:"memory,omitempty"`
+	MemorySwap     int64                      `json:"memory_swap,omitempty"     yaml:"memory_swap,omitempty"`
+	CgroupParent   string                     `json:"cgroup_parent,omitempty"   yaml:"cgroup_parent,omitempty"`
+	ShmSize        int64                      `json:"shm_size,omitempty"        yaml:"shm_size,omitempty"`
+	Ulimits        []UlimitSpec               `json:"ulimits,omitempty"         yaml:"ulimits,omitempty"`
+	AuthConfigs    map[string]BuildAuthConfig `json:"auth_configs,omitempty"    yaml:"auth_configs,omitempty"`
+	Squash         bool                       `json:"squash,omitempty"          yaml:"squash,omitempty"`
+	SecurityOpt    []string                   `json:"security_opt,omitempty"    yaml:"security_opt,omitempty"`
+	BuildID        string                     `json:"build_id,omitempty"        yaml:"build_id,omitempty"`
+	Outputs        []BuildOutputSpec          `json:"outputs,omitempty"         yaml:"outputs,omitempty"`
+
 	Network    string   `json:"network,omitempty"     yaml:"network,omitempty"`     // e.g. "host"
 	ExtraHosts []string `json:"extra_hosts,omitempty" yaml:"extra_hosts,omitempty"` // ["host.docker.internal:host-gateway"]
 
 	Platforms []string `json:"platforms,omitempty" yaml:"platforms,omitempty"` // e.g. ["linux/amd64"]
+}
+
+type UlimitSpec struct {
+	Name string `json:"name"           yaml:"name"`
+	Soft int64  `json:"soft,omitempty" yaml:"soft,omitempty"`
+	Hard int64  `json:"hard,omitempty" yaml:"hard,omitempty"`
+}
+
+type BuildAuthConfig struct {
+	Username      string `json:"username,omitempty"       yaml:"username,omitempty"`
+	Password      string `json:"password,omitempty"       yaml:"password,omitempty"`
+	Auth          string `json:"auth,omitempty"           yaml:"auth,omitempty"`
+	ServerAddress string `json:"server_address,omitempty" yaml:"server_address,omitempty"`
+	IdentityToken string `json:"identity_token,omitempty" yaml:"identity_token,omitempty"`
+	RegistryToken string `json:"registry_token,omitempty" yaml:"registry_token,omitempty"`
+}
+
+type BuildOutputSpec struct {
+	Type  string            `json:"type,omitempty"  yaml:"type,omitempty"`
+	Attrs map[string]string `json:"attrs,omitempty" yaml:"attrs,omitempty"`
 }
 
 type RunSpec struct {
@@ -78,9 +119,9 @@ type RunSpec struct {
 
 	Mounts []MountSpec `json:"mounts,omitempty" yaml:"mounts,omitempty"`
 
-	Resources  ResourcesSpec `json:"resources"            yaml:"resources"`
-	Privileged bool          `json:"privileged,omitempty" yaml:"privileged,omitempty"`
-	Restart    string        `json:"restart,omitempty"    yaml:"restart,omitempty"` // "no", "on-failure", "always", "unless-stopped"
+	Resources  *ResourcesSpec `json:"resources,omitempty"  yaml:"resources,omitempty"`
+	Privileged bool           `json:"privileged,omitempty" yaml:"privileged,omitempty"`
+	Restart    string         `json:"restart,omitempty"    yaml:"restart,omitempty"` // "no", "on-failure", "always", "unless-stopped"
 
 	Platform string `json:"platform,omitempty" yaml:"platform,omitempty"` // optional override, e.g. linux/amd64
 }
@@ -176,11 +217,13 @@ func validateImage(name string, alias *Alias, baseDir string) error {
 		return nil
 	}
 
-	if alias.Image.Build.Cwd == "" {
-		return fmt.Errorf("aliases.%s.image.build.cwd: required", name)
+	if alias.Image.Build.Cwd == "" && alias.Image.Build.RemoteContext == "" {
+		return fmt.Errorf("aliases.%s.image.build.cwd: required when remote_context is empty", name)
 	}
 
-	alias.Image.Build.Cwd = resolvePath(baseDir, alias.Image.Build.Cwd)
+	if alias.Image.Build.Cwd != "" {
+		alias.Image.Build.Cwd = resolvePath(baseDir, alias.Image.Build.Cwd)
+	}
 	if alias.Image.Build.Dockerfile == "" {
 		alias.Image.Build.Dockerfile = "Dockerfile"
 	}

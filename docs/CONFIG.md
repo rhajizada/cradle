@@ -66,7 +66,7 @@ Exactly one of `pull` or `build` is required.
 
 #### image.build
 
-- `cwd` (string, required) - build context directory.
+- `cwd` (string, required unless `remote_context` is set) - build context directory.
   Example: `cwd: ./images/devbox`
 - `dockerfile` (string, optional) - defaults to `Dockerfile`.
   Example: `dockerfile: Dockerfile.dev`
@@ -109,6 +109,48 @@ Exactly one of `pull` or `build` is required.
   platforms:
     - linux/amd64
     - linux/arm64
+  ```
+- `tags` (list, optional) - extra image tags (in addition to the alias tag).
+- `suppress_output` (bool, optional) - suppress build output.
+- `remote_context` (string, optional) - build context URL (e.g. git). If set, `cwd` can be empty.
+- `remove` (bool, optional) - remove intermediate containers (default `true`).
+- `force_remove` (bool, optional) - always remove intermediate containers (default `true`).
+- `isolation` (string, optional) - container isolation (platform-specific).
+- `cpuset_cpus` (string, optional) - CPUs in which to allow execution.
+- `cpuset_mems` (string, optional) - memory nodes in which to allow execution.
+- `cpu_shares` (int, optional) - CPU share weighting.
+- `cpu_quota` (int, optional) - CPU quota in microseconds.
+- `cpu_period` (int, optional) - CPU period in microseconds.
+- `memory` (int, optional) - memory limit in bytes.
+- `memory_swap` (int, optional) - total memory limit (memory + swap) in bytes.
+- `cgroup_parent` (string, optional) - cgroup parent.
+- `shm_size` (int, optional) - shared memory size in bytes.
+- `ulimits` (list, optional) - ulimits.
+  Example:
+  ```yaml
+  ulimits:
+    - name: nofile
+      soft: 1024
+      hard: 2048
+  ```
+- `auth_configs` (map, optional) - registry auth configs keyed by host.
+  Example:
+  ```yaml
+  auth_configs:
+    ghcr.io:
+      username: ${GITHUB_USER}
+      password: ${GITHUB_TOKEN}
+  ```
+- `squash` (bool, optional) - squash build layers.
+- `security_opt` (list, optional) - security options.
+- `build_id` (string, optional) - build identifier for cancellation.
+- `outputs` (list, optional) - BuildKit outputs.
+  Example:
+  ```yaml
+  outputs:
+    - type: local
+      attrs:
+        dest: ./out
   ```
 
 ### run

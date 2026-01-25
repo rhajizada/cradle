@@ -17,6 +17,8 @@ import (
 	controlapi "github.com/moby/buildkit/api/services/control"
 	"github.com/moby/buildkit/session"
 	"github.com/moby/moby/api/types/build"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/registry"
 	"github.com/moby/moby/client"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/term"
@@ -48,6 +50,28 @@ func buildImage(ctx context.Context, cli *client.Client, b *config.BuildSpec, ta
 	}
 
 	contextDir := b.Cwd
+	opts, err := BuildOptionsFromSpec(b, tag)
+	if err != nil {
+		return err
+	}
+
+	if buildErr := runImageBuild(ctx, cli, contextDir, opts.Dockerfile, opts, out); buildErr != nil {
+		if strings.Contains(buildErr.Error(), "no active sessions") {
+			opts.Version = build.BuilderV1
+			opts.Platforms = nil
+			return runImageBuild(ctx, cli, contextDir, opts.Dockerfile, opts, out)
+		}
+		return buildErr
+	}
+
+	return nil
+}
+
+func BuildOptionsFromSpec(b *config.BuildSpec, tag string) (client.ImageBuildOptions, error) {
+	if b == nil {
+		return client.ImageBuildOptions{}, errors.New("missing build spec")
+	}
+
 	dockerfile := b.Dockerfile
 	if dockerfile == "" {
 		dockerfile = "Dockerfile"
@@ -59,41 +83,62 @@ func buildImage(ctx context.Context, cli *client.Client, b *config.BuildSpec, ta
 		buildArgs[k] = &vv
 	}
 
-	platforms, err := ParsePlatformList(b.Platforms)
-	if err != nil {
-		return err
+	tags := []string{tag}
+	if len(b.Tags) > 0 {
+		tags = append(tags, b.Tags...)
 	}
 
-	opts := client.ImageBuildOptions{
-		Tags:        []string{tag},
-		Dockerfile:  dockerfile,
-		Remove:      true,
-		ForceRemove: true,
+	remove := true
+	if b.Remove != nil {
+		remove = *b.Remove
+	}
+	forceRemove := true
+	if b.ForceRemove != nil {
+		forceRemove = *b.ForceRemove
+	}
 
-		BuildArgs:  buildArgs,
-		Target:     b.Target,
-		Labels:     b.Labels,
-		NoCache:    b.NoCache,
-		PullParent: b.PullParent,
-		CacheFrom:  b.CacheFrom,
-		Platforms:  platforms,
+	platforms, err := ParsePlatformList(b.Platforms)
+	if err != nil {
+		return client.ImageBuildOptions{}, err
+	}
+
+	return client.ImageBuildOptions{
+		Tags:           tags,
+		Dockerfile:     dockerfile,
+		SuppressOutput: b.SuppressOutput,
+		RemoteContext:  b.RemoteContext,
+		Remove:         remove,
+		ForceRemove:    forceRemove,
+		Isolation:      container.Isolation(b.Isolation),
+		CPUSetCPUs:     b.CPUSetCPUs,
+		CPUSetMems:     b.CPUSetMems,
+		CPUShares:      b.CPUShares,
+		CPUQuota:       b.CPUQuota,
+		CPUPeriod:      b.CPUPeriod,
+		Memory:         b.Memory,
+		MemorySwap:     b.MemorySwap,
+		CgroupParent:   b.CgroupParent,
+		ShmSize:        b.ShmSize,
+		Ulimits:        buildUlimits(b.Ulimits),
+
+		BuildArgs:   buildArgs,
+		AuthConfigs: buildAuthConfigs(b.AuthConfigs),
+		Target:      b.Target,
+		Labels:      b.Labels,
+		NoCache:     b.NoCache,
+		PullParent:  b.PullParent,
+		Squash:      b.Squash,
+		CacheFrom:   b.CacheFrom,
+		SecurityOpt: b.SecurityOpt,
+		Platforms:   platforms,
 
 		NetworkMode: b.Network,
 		ExtraHosts:  b.ExtraHosts,
+		BuildID:     b.BuildID,
+		Outputs:     buildOutputs(b.Outputs),
 
 		Version: build.BuilderBuildKit,
-	}
-
-	if buildErr := runImageBuild(ctx, cli, contextDir, dockerfile, opts, out); buildErr != nil {
-		if strings.Contains(buildErr.Error(), "no active sessions") {
-			opts.Version = build.BuilderV1
-			opts.Platforms = nil
-			return runImageBuild(ctx, cli, contextDir, dockerfile, opts, out)
-		}
-		return buildErr
-	}
-
-	return nil
+	}, nil
 }
 
 func ParsePlatformList(specs []string) ([]ocispec.Platform, error) {
@@ -118,7 +163,12 @@ func runImageBuild(
 	opts client.ImageBuildOptions,
 	out io.Writer,
 ) (err error) {
-	tar := TarDir(contextDir)
+	var tar io.ReadCloser
+	if opts.RemoteContext != "" {
+		tar = io.NopCloser(strings.NewReader(""))
+	} else {
+		tar = TarDir(contextDir)
+	}
 	defer func() {
 		if cerr := tar.Close(); err == nil && cerr != nil {
 			err = cerr
@@ -160,6 +210,53 @@ func runImageBuild(
 	}()
 
 	return renderDockerJSON(out, res.Body)
+}
+
+func buildUlimits(specs []config.UlimitSpec) []*container.Ulimit {
+	if len(specs) == 0 {
+		return nil
+	}
+	ulimits := make([]*container.Ulimit, 0, len(specs))
+	for _, spec := range specs {
+		ulimits = append(ulimits, &container.Ulimit{
+			Name: spec.Name,
+			Soft: spec.Soft,
+			Hard: spec.Hard,
+		})
+	}
+	return ulimits
+}
+
+func buildAuthConfigs(specs map[string]config.BuildAuthConfig) map[string]registry.AuthConfig {
+	if len(specs) == 0 {
+		return nil
+	}
+	authConfigs := make(map[string]registry.AuthConfig, len(specs))
+	for host, spec := range specs {
+		authConfigs[host] = registry.AuthConfig{
+			Username:      spec.Username,
+			Password:      spec.Password,
+			Auth:          spec.Auth,
+			ServerAddress: spec.ServerAddress,
+			IdentityToken: spec.IdentityToken,
+			RegistryToken: spec.RegistryToken,
+		}
+	}
+	return authConfigs
+}
+
+func buildOutputs(specs []config.BuildOutputSpec) []client.ImageBuildOutput {
+	if len(specs) == 0 {
+		return nil
+	}
+	outputs := make([]client.ImageBuildOutput, 0, len(specs))
+	for _, spec := range specs {
+		outputs = append(outputs, client.ImageBuildOutput{
+			Type:  spec.Type,
+			Attrs: spec.Attrs,
+		})
+	}
+	return outputs
 }
 
 type buildMessage struct {

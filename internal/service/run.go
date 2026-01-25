@@ -301,25 +301,25 @@ type runFingerprintSpec struct {
 	ImageRef string `json:"image_ref"`
 	ImageID  string `json:"image_id"`
 	Run      struct {
-		Username   string               `json:"username"`
-		UID        int                  `json:"uid"`
-		GID        int                  `json:"gid"`
-		TTY        bool                 `json:"tty"`
-		StdinOpen  bool                 `json:"stdin_open"`
-		AutoRemove bool                 `json:"auto_remove"`
-		Hostname   string               `json:"hostname"`
-		Workdir    string               `json:"workdir"`
-		Env        []envKV              `json:"env"`
-		Entrypoint []string             `json:"entrypoint"`
-		Cmd        []string             `json:"cmd"`
-		Network    string               `json:"network"`
-		Ports      []string             `json:"ports"`
-		ExtraHosts []string             `json:"extra_hosts"`
-		Mounts     []config.MountSpec   `json:"mounts"`
-		Resources  config.ResourcesSpec `json:"resources"`
-		Privileged bool                 `json:"privileged"`
-		Restart    string               `json:"restart"`
-		Platform   string               `json:"platform"`
+		Username   string                `json:"username"`
+		UID        int                   `json:"uid"`
+		GID        int                   `json:"gid"`
+		TTY        bool                  `json:"tty"`
+		StdinOpen  bool                  `json:"stdin_open"`
+		AutoRemove bool                  `json:"auto_remove"`
+		Hostname   string                `json:"hostname"`
+		Workdir    string                `json:"workdir"`
+		Env        []envKV               `json:"env"`
+		Entrypoint []string              `json:"entrypoint"`
+		Cmd        []string              `json:"cmd"`
+		Network    string                `json:"network"`
+		Ports      []string              `json:"ports"`
+		ExtraHosts []string              `json:"extra_hosts"`
+		Mounts     []config.MountSpec    `json:"mounts"`
+		Resources  *config.ResourcesSpec `json:"resources,omitempty"`
+		Privileged bool                  `json:"privileged"`
+		Restart    string                `json:"restart"`
+		Platform   string                `json:"platform"`
 	} `json:"run"`
 }
 
@@ -420,8 +420,11 @@ func userSpec(run config.RunSpec) string {
 	return ""
 }
 
-func buildResources(spec config.ResourcesSpec) (container.Resources, error) {
+func buildResources(spec *config.ResourcesSpec) (container.Resources, error) {
 	resources := container.Resources{}
+	if spec == nil {
+		return resources, nil
+	}
 	if spec.CPUs > 0 {
 		resources.NanoCPUs = int64(spec.CPUs * nanoCPUsPerCPU)
 	}
@@ -453,7 +456,7 @@ func buildHostConfig(
 		hostCfg.RestartPolicy = container.RestartPolicy{Name: container.RestartPolicyMode(run.Restart)}
 	}
 
-	if run.Resources.ShmSize != "" {
+	if run.Resources != nil && run.Resources.ShmSize != "" {
 		shm, err := units.RAMInBytes(run.Resources.ShmSize)
 		if err != nil {
 			return nil, fmt.Errorf("invalid run.resources.shm_size: %w", err)

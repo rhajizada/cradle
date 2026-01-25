@@ -69,6 +69,150 @@
                       "type": "string"
                     }
                   },
+                  "tags": {
+                    "type": [
+                      "null",
+                      "array"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "suppress_output": {
+                    "type": "boolean"
+                  },
+                  "remote_context": {
+                    "type": "string"
+                  },
+                  "remove": {
+                    "type": [
+                      "null",
+                      "boolean"
+                    ]
+                  },
+                  "force_remove": {
+                    "type": [
+                      "null",
+                      "boolean"
+                    ]
+                  },
+                  "isolation": {
+                    "type": "string"
+                  },
+                  "cpuset_cpus": {
+                    "type": "string"
+                  },
+                  "cpuset_mems": {
+                    "type": "string"
+                  },
+                  "cpu_shares": {
+                    "type": "integer"
+                  },
+                  "cpu_quota": {
+                    "type": "integer"
+                  },
+                  "cpu_period": {
+                    "type": "integer"
+                  },
+                  "memory": {
+                    "type": "integer"
+                  },
+                  "memory_swap": {
+                    "type": "integer"
+                  },
+                  "cgroup_parent": {
+                    "type": "string"
+                  },
+                  "shm_size": {
+                    "type": "integer"
+                  },
+                  "ulimits": {
+                    "type": [
+                      "null",
+                      "array"
+                    ],
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "soft": {
+                          "type": "integer"
+                        },
+                        "hard": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "auth_configs": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object",
+                      "properties": {
+                        "username": {
+                          "type": "string"
+                        },
+                        "password": {
+                          "type": "string"
+                        },
+                        "auth": {
+                          "type": "string"
+                        },
+                        "server_address": {
+                          "type": "string"
+                        },
+                        "identity_token": {
+                          "type": "string"
+                        },
+                        "registry_token": {
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "squash": {
+                    "type": "boolean"
+                  },
+                  "security_opt": {
+                    "type": [
+                      "null",
+                      "array"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "build_id": {
+                    "type": "string"
+                  },
+                  "outputs": {
+                    "type": [
+                      "null",
+                      "array"
+                    ],
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string"
+                        },
+                        "attrs": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
                   "network": {
                     "type": "string"
                   },
@@ -218,7 +362,10 @@
                 }
               },
               "resources": {
-                "type": "object",
+                "type": [
+                  "null",
+                  "object"
+                ],
                 "properties": {
                   "cpus": {
                     "type": "number"

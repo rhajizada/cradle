@@ -10,13 +10,13 @@ aliases:
           USERNAME: ${USER}
           UID: ${UID}
     run:
-      workdir: /home/${USER}
+      work_dir: /home/${USER}
       cmd: ["/bin/bash"]
       tty: true
       stdin_open: true
       attach: true
-      network: host
-      mounts:
+      network_mode: host
+      volumes:
         - type: bind
           source: /home
           target: /home
@@ -29,13 +29,13 @@ aliases:
           USERNAME: ${USER}
           UID: ${UID}
     run:
-      workdir: /home/${USER}
+      work_dir: /home/${USER}
       cmd: ["/bin/bash"]
       tty: true
       stdin_open: true
       attach: true
-      network: host
-      mounts:
+      network_mode: host
+      volumes:
         - type: bind
           source: /home
           target: /home
@@ -58,7 +58,7 @@ aliases:
         PUID: "1000"
         PGID: "1000"
         TZ: Etc/UTC
-      mounts:
+      volumes:
         - type: tmpfs
           target: /config
       attach: false
@@ -71,13 +71,13 @@ aliases:
           USERNAME: ${USER}
           UID: ${UID}
     run:
-      workdir: /home/${USER}
+      work_dir: /home/${USER}
       cmd: ["/bin/bash"]
       tty: true
       stdin_open: true
       attach: true
-      network: host
-      mounts:
+      network_mode: host
+      volumes:
         - type: bind
           source: /home
           target: /home
@@ -99,13 +99,13 @@ aliases:
           USERNAME: ${USER}
           UID: ${UID}
     run:
-      workdir: /home/${USER}
+      work_dir: /home/${USER}
       cmd: ["/bin/bash"]
       tty: true
       stdin_open: true
       attach: true
-      network: host
-      mounts:
+      network_mode: host
+      volumes:
         - type: bind
           source: /home
           target: /home
@@ -118,13 +118,13 @@ aliases:
           USERNAME: ${USER}
           UID: ${UID}
     run:
-      workdir: /home/${USER}
+      work_dir: /home/${USER}
       cmd: ["/bin/bash"]
       tty: true
       stdin_open: true
       attach: true
-      network: host
-      mounts:
+      network_mode: host
+      volumes:
         - type: bind
           source: /home
           target: /home
@@ -137,13 +137,13 @@ aliases:
           USERNAME: ${USER}
           UID: ${UID}
     run:
-      workdir: /home/${USER}
+      work_dir: /home/${USER}
       cmd: ["/bin/bash"]
       tty: true
       stdin_open: true
       attach: true
-      network: host
-      mounts:
+      network_mode: host
+      volumes:
         - type: bind
           source: /home
           target: /home
@@ -160,7 +160,7 @@ aliases:
         PUID: "1000"
         PGID: "1000"
         TZ: Etc/UTC
-      mounts:
+      volumes:
         - type: tmpfs
           target: /config
         - type: bind
@@ -176,13 +176,13 @@ aliases:
           USERNAME: ${USER}
           UID: ${UID}
     run:
-      workdir: /home/${USER}
+      work_dir: /home/${USER}
       cmd: ["/bin/bash"]
       tty: true
       stdin_open: true
       attach: true
-      network: host
-      mounts:
+      network_mode: host
+      volumes:
         - type: bind
           source: /home
           target: /home

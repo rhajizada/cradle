@@ -19,7 +19,7 @@ aliases:
       build:
         cwd: ./images/demo
     run:
-      mounts:
+      volumes:
         - type: bind
           source: ./src
           target: /workspace
@@ -42,12 +42,12 @@ aliases:
 		t.Fatalf("cwd not resolved: got %q want %q", a.Image.Build.Cwd, wantCwd)
 	}
 
-	if len(a.Run.Mounts) != 1 {
-		t.Fatalf("expected 1 mount, got %d", len(a.Run.Mounts))
+	if len(a.Run.Volumes) != 1 {
+		t.Fatalf("expected 1 volume, got %d", len(a.Run.Volumes))
 	}
 	wantSrc := filepath.Join(dir, "src")
-	if a.Run.Mounts[0].Source != wantSrc {
-		t.Fatalf("mount source not resolved: got %q want %q", a.Run.Mounts[0].Source, wantSrc)
+	if a.Run.Volumes[0].Source != wantSrc {
+		t.Fatalf("volume source not resolved: got %q want %q", a.Run.Volumes[0].Source, wantSrc)
 	}
 }
 
@@ -93,7 +93,7 @@ func TestValidateMountType(t *testing.T) {
 			"demo": {
 				Image: config.ImageSpec{Pull: &config.PullSpec{Ref: "ubuntu:24.04"}},
 				Run: config.RunSpec{
-					Mounts: []config.MountSpec{{Type: "bad", Target: "/x"}},
+					Volumes: []config.MountSpec{{Type: "bad", Target: "/x"}},
 				},
 			},
 		},
@@ -262,6 +262,73 @@ aliases:
 	}
 	if build.RemoteContext != "https://example.com/repo.git" {
 		t.Fatalf("unexpected remote_context: %q", build.RemoteContext)
+	}
+}
+
+func TestLoadFileRunComposeFields(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	content := `
+version: 1
+aliases:
+  demo:
+    image:
+      pull:
+        ref: ubuntu:24.04
+    run:
+      work_dir: /workspace
+      domain_name: example.local
+      network_mode: host
+      volumes:
+        - type: bind
+          source: ./src
+          target: /workspace
+      read_only: true
+      stop_grace_period: 30s
+      healthcheck:
+        test: ["CMD", "true"]
+        interval: 30s
+      logging:
+        driver: json-file
+        options:
+          max-size: 10m
+`
+	if err := os.WriteFile(cfgPath, []byte(content), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	cfg, err := config.LoadFile(cfgPath)
+	if err != nil {
+		t.Fatalf("LoadFile error: %v", err)
+	}
+
+	run := cfg.Aliases["demo"].Run
+	if run.WorkDir != "/workspace" {
+		t.Fatalf("unexpected work_dir: %q", run.WorkDir)
+	}
+	if run.DomainName != "example.local" {
+		t.Fatalf("unexpected domain_name: %q", run.DomainName)
+	}
+	if run.NetworkMode != "host" {
+		t.Fatalf("unexpected network_mode: %q", run.NetworkMode)
+	}
+	if len(run.Volumes) != 1 {
+		t.Fatalf("expected volumes")
+	}
+	if run.Volumes[0].Source != filepath.Join(dir, "src") {
+		t.Fatalf("unexpected volume source: %q", run.Volumes[0].Source)
+	}
+	if !run.ReadOnly {
+		t.Fatalf("expected read_only true")
+	}
+	if run.StopGracePeriod != "30s" {
+		t.Fatalf("unexpected stop_grace_period: %q", run.StopGracePeriod)
+	}
+	if run.HealthCheck == nil || len(run.HealthCheck.Test) == 0 {
+		t.Fatalf("expected healthcheck")
+	}
+	if run.Logging == nil || run.Logging.Driver != "json-file" {
+		t.Fatalf("unexpected logging config: %+v", run.Logging)
 	}
 }
 

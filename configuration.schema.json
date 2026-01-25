@@ -246,14 +246,14 @@
           "run": {
             "type": "object",
             "properties": {
-              "username": {
-                "type": "string"
-              },
               "uid": {
                 "type": "integer"
               },
               "gid": {
                 "type": "integer"
+              },
+              "user": {
+                "type": "string"
               },
               "tty": {
                 "type": [
@@ -285,7 +285,10 @@
               "hostname": {
                 "type": "string"
               },
-              "workdir": {
+              "domain_name": {
+                "type": "string"
+              },
+              "work_dir": {
                 "type": "string"
               },
               "env": {
@@ -312,10 +315,37 @@
                   "type": "string"
                 }
               },
-              "network": {
+              "network_mode": {
                 "type": "string"
               },
+              "networks": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "aliases": {
+                      "type": [
+                        "null",
+                        "array"
+                      ],
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
               "ports": {
+                "type": [
+                  "null",
+                  "array"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "expose": {
                 "type": [
                   "null",
                   "array"
@@ -333,7 +363,46 @@
                   "type": "string"
                 }
               },
-              "mounts": {
+              "dns": {
+                "type": [
+                  "null",
+                  "array"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "dns_search": {
+                "type": [
+                  "null",
+                  "array"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "dns_opt": {
+                "type": [
+                  "null",
+                  "array"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "ipc": {
+                "type": "string"
+              },
+              "pid": {
+                "type": "string"
+              },
+              "uts": {
+                "type": "string"
+              },
+              "runtime": {
+                "type": "string"
+              },
+              "volumes": {
                 "type": [
                   "null",
                   "array"
@@ -350,7 +419,7 @@
                     "target": {
                       "type": "string"
                     },
-                    "readonly": {
+                    "read_only": {
                       "type": "boolean"
                     }
                   },
@@ -370,7 +439,43 @@
                   "cpus": {
                     "type": "number"
                   },
+                  "cpu_shares": {
+                    "type": "integer"
+                  },
+                  "cpu_quota": {
+                    "type": "integer"
+                  },
+                  "cpu_period": {
+                    "type": "integer"
+                  },
+                  "cpuset_cpus": {
+                    "type": "string"
+                  },
+                  "cpuset_mems": {
+                    "type": "string"
+                  },
                   "memory": {
+                    "type": "string"
+                  },
+                  "memory_reservation": {
+                    "type": "string"
+                  },
+                  "memory_swap": {
+                    "type": "string"
+                  },
+                  "pids_limit": {
+                    "type": [
+                      "null",
+                      "integer"
+                    ]
+                  },
+                  "oom_kill_disable": {
+                    "type": [
+                      "null",
+                      "boolean"
+                    ]
+                  },
+                  "cgroup_parent": {
                     "type": "string"
                   },
                   "shm_size": {
@@ -381,6 +486,162 @@
               },
               "privileged": {
                 "type": "boolean"
+              },
+              "read_only": {
+                "type": "boolean"
+              },
+              "cap_add": {
+                "type": [
+                  "null",
+                  "array"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "cap_drop": {
+                "type": [
+                  "null",
+                  "array"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "security_opt": {
+                "type": [
+                  "null",
+                  "array"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "sysctls": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "ulimits": {
+                "type": [
+                  "null",
+                  "array"
+                ],
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "soft": {
+                      "type": "integer"
+                    },
+                    "hard": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "tmpfs": {
+                "type": [
+                  "null",
+                  "array"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "devices": {
+                "type": [
+                  "null",
+                  "array"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "group_add": {
+                "type": [
+                  "null",
+                  "array"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "labels": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "stop_signal": {
+                "type": "string"
+              },
+              "stop_grace_period": {
+                "type": "string"
+              },
+              "healthcheck": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "test": {
+                    "type": [
+                      "null",
+                      "array"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "interval": {
+                    "type": "string"
+                  },
+                  "timeout": {
+                    "type": "string"
+                  },
+                  "retries": {
+                    "type": [
+                      "null",
+                      "integer"
+                    ]
+                  },
+                  "start_period": {
+                    "type": "string"
+                  },
+                  "start_interval": {
+                    "type": "string"
+                  },
+                  "disable": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "logging": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "driver": {
+                    "type": "string"
+                  },
+                  "options": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "additionalProperties": false
               },
               "restart": {
                 "type": "string"

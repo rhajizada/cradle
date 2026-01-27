@@ -66,6 +66,13 @@ Exactly one of `pull` or `build` is required.
 - `policy` (string, optional) - `always|if_missing|never` (default `always`).
 - `platform` (string, optional) - platform `os/arch[/variant]`.
 - `auth` (object, optional) - registry auth.
+  Example:
+  ```yaml
+  auth:
+    username: ${REGISTRY_USER}
+    password: ${REGISTRY_PASS}
+  ```
+  Auth fields: `username`, `password`, `auth`, `server_address`, `identity_token`, `registry_token`.
 
 #### image.build
 
@@ -196,6 +203,11 @@ Process:
 - `user` (string, optional) - user or user:group string.
 - `group_add` (list, optional) - supplementary groups.
 - `labels` (map, optional) - container labels.
+  Example:
+  ```yaml
+  labels:
+    com.example.role: dev
+  ```
 - `env` (map, optional) - environment variables.
   Example:
   ```yaml
@@ -260,6 +272,14 @@ Mounts:
 
 Resources:
 
+Example:
+
+```yaml
+resources:
+  cpus: 2
+  memory: 2g
+```
+
 - `resources.cpus` (number, optional) - CPU count (maps to NanoCPUs).
   Example: `cpus: 2`
 - `resources.cpu_shares` (int, optional) - CPU shares.
@@ -286,13 +306,34 @@ Other:
 - `cap_drop` (list, optional) - drop Linux capabilities.
 - `security_opt` (list, optional) - security options.
 - `sysctls` (map, optional) - sysctls.
+  Example:
+  ```yaml
+  sysctls:
+    net.core.somaxconn: "1024"
+  ```
 - `ulimits` (list, optional) - ulimits.
 - `tmpfs` (list, optional) - tmpfs mounts (e.g. `/run:rw,noexec`).
 - `devices` (list, optional) - device mappings (e.g. `/dev/ttyUSB0:/dev/ttyUSB0:rwm`).
 - `stop_signal` (string, optional) - stop signal.
 - `stop_grace_period` (string, optional) - duration before force stop (e.g. `30s`).
 - `healthcheck` (object, optional) - healthcheck configuration.
+  Example:
+  ```yaml
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+    interval: 30s
+    timeout: 5s
+    retries: 3
+  ```
 - `logging` (object, optional) - log driver config (driver/options).
+  Example:
+  ```yaml
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+  ```
 - `restart` (string, optional) - `no|on-failure|always|unless-stopped`.
   Example: `restart: unless-stopped`
 - `platform` (string, optional) - runtime platform `os/arch[/variant]`.

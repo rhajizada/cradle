@@ -301,5 +301,4 @@ Other:
 ## Notes
 
 - Relative paths in `image.build.cwd` and `run.volumes[].source` are resolved from the config file directory.
-- Set `run.auto_remove: false` to keep containers for reuse across runs.
 - If you override `run.name`, Cradle uses it to identify the container.

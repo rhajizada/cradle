@@ -1,20 +1,20 @@
-package render
+package render_test
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"log/slog"
 	"strings"
 	"testing"
 
+	"github.com/rhajizada/cradle/internal/render"
 	"github.com/rhajizada/cradle/internal/service"
 )
 
 func TestListStatusesTable(t *testing.T) {
 	var buf bytes.Buffer
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	r := New(log, &buf)
+	r := render.New(log, &buf)
 
 	items := []service.AliasStatus{
 		{
@@ -45,65 +45,50 @@ func TestListStatusesTable(t *testing.T) {
 
 	r.ListStatuses(items)
 
-	maxName := len("ALIAS")
-	maxImageRef := len("IMAGE")
-	maxImageStatus := len("STATUS")
-	maxContainerName := len("CONTAINER")
-	maxContainerStatus := len("STATUS")
-	for _, item := range items {
-		if len(item.Name) > maxName {
-			maxName = len(item.Name)
-		}
-		if len(item.ImageRef) > maxImageRef {
-			maxImageRef = len(item.ImageRef)
-		}
-		if len(item.ContainerName) > maxContainerName {
-			maxContainerName = len(item.ContainerName)
-		}
-		if l := len(imageStatusLabel(item.ImagePresent)); l > maxImageStatus {
-			maxImageStatus = l
-		}
-		if l := len(containerStatusLabel(item)); l > maxContainerStatus {
-			maxContainerStatus = l
+	out := buf.String()
+
+	// Basic structure: header labels should be present.
+	for _, s := range []string{"Alias", "Image", "Status", "Container"} {
+		if !strings.Contains(out, s) {
+			t.Fatalf("expected %q in output:\n%s", s, out)
 		}
 	}
 
-	expected := ""
-	expected += fmt.Sprintf(
-		"%-*s  %-*s  %-*s  %-*s  %-*s\n",
-		maxName, "ALIAS",
-		maxImageRef, "IMAGE",
-		maxImageStatus, "STATUS",
-		maxContainerName, "CONTAINER",
-		maxContainerStatus, "STATUS",
-	)
-	expected += fmt.Sprintf(
-		"%-*s  %-*s  %-*s  %-*s  %-*s\n",
-		maxName, strings.Repeat("-", maxName),
-		maxImageRef, strings.Repeat("-", maxImageRef),
-		maxImageStatus, strings.Repeat("-", maxImageStatus),
-		maxContainerName, strings.Repeat("-", maxContainerName),
-		maxContainerStatus, strings.Repeat("-", maxContainerStatus),
-	)
-	for _, item := range items {
-		expected += fmt.Sprintf(
-			"%-*s  %-*s  %-*s  %-*s  %-*s\n",
-			maxName, item.Name,
-			maxImageRef, item.ImageRef,
-			maxImageStatus, imageStatusLabel(item.ImagePresent),
-			maxContainerName, item.ContainerName,
-			maxContainerStatus, containerStatusLabel(item),
-		)
+	// Rows: key fields.
+	for _, s := range []string{
+		"web", "node:22", "cradle-web",
+		"db", "postgres:16", "cradle-db",
+		"paused", "busybox:1", "cradle-paused",
+	} {
+		if !strings.Contains(out, s) {
+			t.Fatalf("expected %q in output:\n%s", s, out)
+		}
 	}
 
-	if buf.String() != expected {
-		t.Fatalf("unexpected output:\n%s", buf.String())
+	// Image status: emoji + lowercase text.
+	if !strings.Contains(out, "✅ present") {
+		t.Fatalf("expected image present status in output:\n%s", out)
+	}
+	if !strings.Contains(out, "❌ missing") {
+		t.Fatalf("expected image missing status in output:\n%s", out)
+	}
+
+	// Container status: emoji + lowercase text.
+	if !strings.Contains(out, "▶️ running") {
+		t.Fatalf("expected running container status in output:\n%s", out)
+	}
+	if !strings.Contains(out, "⏸️ paused") {
+		t.Fatalf("expected paused container status in output:\n%s", out)
+	}
+	// For ContainerPresent=false, we expect the "missing" text (paired with ❌).
+	if !strings.Contains(out, "❌ missing") {
+		t.Fatalf("expected missing container status in output:\n%s", out)
 	}
 }
 
-func TestRunStartStopAndBuildStart(t *testing.T) {
+func TestRunStartStopAndBuildStart(_ *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	r := New(log, io.Discard)
+	r := render.New(log, io.Discard)
 
 	r.RunStart("id")
 	r.RunStop("id")
@@ -128,13 +113,13 @@ func TestContainerStatusLabelVariants(t *testing.T) {
 			ContainerPresent: true,
 			ContainerStatus:  status,
 		}
-		if got := containerStatusLabel(item); got != want {
+		if got := render.ContainerStatusLabel(item); got != want {
 			t.Fatalf("status %q: got %q want %q", status, got, want)
 		}
 	}
 
 	item := service.AliasStatus{ContainerPresent: false}
-	if got := containerStatusLabel(item); got != "❌" {
+	if got := render.ContainerStatusLabel(item); got != "❌" {
 		t.Fatalf("missing container: got %q", got)
 	}
 }

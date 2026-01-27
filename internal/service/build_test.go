@@ -1,4 +1,4 @@
-package service
+package service_test
 
 import (
 	"encoding/json"
@@ -8,56 +8,58 @@ import (
 
 	"github.com/containerd/containerd/v2/pkg/protobuf/proto"
 	controlapi "github.com/moby/buildkit/api/services/control"
+
+	"github.com/rhajizada/cradle/internal/service"
 )
 
 func TestFilterEmpty(t *testing.T) {
-	out := filterEmpty([]string{"", "a", " ", "b"})
+	out := service.FilterEmpty([]string{"", "a", " ", "b"})
 	if len(out) != 2 || out[0] != "a" || out[1] != "b" {
 		t.Fatalf("unexpected output: %+v", out)
 	}
 }
 
 func TestStatusEmoji(t *testing.T) {
-	if statusEmoji("Pulling") != "📥" {
+	if service.StatusEmoji("Pulling") != "📥" {
 		t.Fatalf("unexpected emoji for Pulling")
 	}
-	if statusEmoji("Digest") != "🔍" {
+	if service.StatusEmoji("Digest") != "🔍" {
 		t.Fatalf("unexpected emoji for Digest")
 	}
-	if statusEmoji("Status") != "✅" {
+	if service.StatusEmoji("Status") != "✅" {
 		t.Fatalf("unexpected emoji for Status")
 	}
-	if statusEmoji("Other") != "🔧" {
+	if service.StatusEmoji("Other") != "🔧" {
 		t.Fatalf("unexpected default emoji")
 	}
 }
 
 func TestLabelFor(t *testing.T) {
-	if labelFor("", "Status") != "" {
+	if service.LabelFor("", "Status") != "" {
 		t.Fatalf("expected empty label for empty id")
 	}
-	if labelFor("123", "Pulling from") != "" {
+	if service.LabelFor("123", "Pulling from") != "" {
 		t.Fatalf("expected empty label for numeric id with pulling")
 	}
-	if labelFor("a1b2c3d4e5f6", "Status") != "layer a1b2c3d4e5f6:" {
+	if service.LabelFor("a1b2c3d4e5f6", "Status") != "layer a1b2c3d4e5f6:" {
 		t.Fatalf("unexpected layer label")
 	}
-	if labelFor("abc", "Status") != "abc:" {
+	if service.LabelFor("abc", "Status") != "abc:" {
 		t.Fatalf("unexpected generic label")
 	}
 }
 
 func TestLooksNumeric(t *testing.T) {
-	if !looksNumeric("123") || looksNumeric("12a") || looksNumeric("") {
+	if !service.LooksNumeric("123") || service.LooksNumeric("12a") || service.LooksNumeric("") {
 		t.Fatalf("looksNumeric behavior unexpected")
 	}
 }
 
 func TestLooksLayerID(t *testing.T) {
-	if !looksLayerID("a1b2c3d4e5f6") {
+	if !service.LooksLayerID("a1b2c3d4e5f6") {
 		t.Fatalf("expected layer id")
 	}
-	if looksLayerID("short") || looksLayerID("nothexzzzzzz") {
+	if service.LooksLayerID("short") || service.LooksLayerID("nothexzzzzzz") {
 		t.Fatalf("expected invalid layer id")
 	}
 }
@@ -84,7 +86,7 @@ func TestDecodeBuildkitTrace(t *testing.T) {
 		t.Fatalf("marshal raw: %v", err)
 	}
 
-	lines, ok := decodeBuildkitTrace(data)
+	lines, ok := service.DecodeBuildkitTrace(data)
 	if !ok || len(lines) == 0 {
 		t.Fatalf("expected decoded lines")
 	}
@@ -96,7 +98,7 @@ func TestDecodeBuildkitTrace(t *testing.T) {
 }
 
 func TestParsePlatformList(t *testing.T) {
-	plats, err := parsePlatformList([]string{"linux/amd64", "linux/arm64"})
+	plats, err := service.ParsePlatformList([]string{"linux/amd64", "linux/arm64"})
 	if err != nil {
 		t.Fatalf("parsePlatformList error: %v", err)
 	}
@@ -106,30 +108,30 @@ func TestParsePlatformList(t *testing.T) {
 }
 
 func TestParsePlatformListInvalid(t *testing.T) {
-	if _, err := parsePlatformList([]string{"bad"}); err == nil {
+	if _, err := service.ParsePlatformList([]string{"bad"}); err == nil {
 		t.Fatalf("expected error for invalid platform")
 	}
 }
 
-func TestOutputStyle(t *testing.T) {
-	style := outputStyle(io.Discard)
-	_ = style.line("x", "", "a", "")
+func TestOutputStyle(_ *testing.T) {
+	style := service.OutputStyle(io.Discard)
+	_ = style.Line("x", "", "a", "")
 }
 
 func TestOutStyleFormatting(t *testing.T) {
-	s := outStyle{color: false}
-	if got := s.prefixed("x"); got != "x" {
+	s := service.OutStyle{Color: false}
+	if got := s.Prefixed("x"); got != "x" {
 		t.Fatalf("unexpected prefixed output: %q", got)
 	}
-	if got := s.line("e", "", "a", ""); got != "e a\n" {
+	if got := s.Line("e", "", "a", ""); got != "e a\n" {
 		t.Fatalf("unexpected line output: %q", got)
 	}
 
-	s = outStyle{color: true}
-	if got := s.prefixed("x"); !strings.Contains(got, "x") {
+	s = service.OutStyle{Color: true}
+	if got := s.Prefixed("x"); !strings.Contains(got, "x") {
 		t.Fatalf("expected prefixed to contain text")
 	}
-	if got := s.line("e", colorGreen, "a"); !strings.Contains(got, "a") {
+	if got := s.Line("e", "green", "a"); !strings.Contains(got, "a") {
 		t.Fatalf("expected colored line to contain text")
 	}
 }

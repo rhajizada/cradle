@@ -1,12 +1,16 @@
-package config
+package config_test
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/rhajizada/cradle/internal/config"
+)
 
 func TestExpandEnvBasic(t *testing.T) {
 	t.Setenv("FOO", "bar")
 	t.Setenv("EMPTY", "")
 
-	got, err := ExpandEnv("x:$FOO:y:${FOO}")
+	got, err := config.ExpandEnv("x:$FOO:y:${FOO}")
 	if err != nil {
 		t.Fatalf("ExpandEnv error: %v", err)
 	}
@@ -14,7 +18,7 @@ func TestExpandEnvBasic(t *testing.T) {
 		t.Fatalf("unexpected value: %q", got)
 	}
 
-	got, err = ExpandEnv("${EMPTY:-fallback}")
+	got, err = config.ExpandEnv("${EMPTY:-fallback}")
 	if err != nil {
 		t.Fatalf("ExpandEnv error: %v", err)
 	}
@@ -25,7 +29,7 @@ func TestExpandEnvBasic(t *testing.T) {
 
 func TestExpandEnvDefaults(t *testing.T) {
 	t.Setenv("SET", "ok")
-	got, err := ExpandEnv("${SET-default}-${UNSET-default}-${UNSET:-alt}-${SET:-alt}")
+	got, err := config.ExpandEnv("${SET-default}-${UNSET-default}-${UNSET:-alt}-${SET:-alt}")
 	if err != nil {
 		t.Fatalf("ExpandEnv error: %v", err)
 	}
@@ -35,7 +39,7 @@ func TestExpandEnvDefaults(t *testing.T) {
 }
 
 func TestExpandEnvEscapes(t *testing.T) {
-	got, err := ExpandEnv(`$$:\$:\$${FOO}`)
+	got, err := config.ExpandEnv(`$$:\$:\$${FOO}`)
 	if err != nil {
 		t.Fatalf("ExpandEnv error: %v", err)
 	}
@@ -45,14 +49,14 @@ func TestExpandEnvEscapes(t *testing.T) {
 }
 
 func TestExpandEnvBadSyntax(t *testing.T) {
-	_, err := ExpandEnv("${FOO")
+	_, err := config.ExpandEnv("${FOO")
 	if err == nil {
 		t.Fatalf("expected error for bad expansion syntax")
 	}
 }
 
 func TestExpandEnvUnset(t *testing.T) {
-	got, err := ExpandEnv("x$UNSETy")
+	got, err := config.ExpandEnv("x$UNSETy")
 	if err != nil {
 		t.Fatalf("ExpandEnv error: %v", err)
 	}

@@ -28,8 +28,8 @@ func (s *Service) Stop(ctx context.Context, alias string) (string, error) {
 	}
 
 	if ctr.Container.State != nil && ctr.Container.State.Running {
-		if _, err := s.cli.ContainerStop(ctx, ctr.Container.ID, client.ContainerStopOptions{}); err != nil {
-			return "", err
+		if _, stopErr := s.cli.ContainerStop(ctx, ctr.Container.ID, client.ContainerStopOptions{}); stopErr != nil {
+			return "", stopErr
 		}
 	}
 

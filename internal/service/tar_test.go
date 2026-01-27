@@ -1,4 +1,4 @@
-package service
+package service_test
 
 import (
 	"archive/tar"
@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/rhajizada/cradle/internal/service"
 )
 
 func TestTarDir(t *testing.T) {
@@ -15,10 +17,7 @@ func TestTarDir(t *testing.T) {
 		t.Fatalf("write file: %v", err)
 	}
 
-	rc, err := tarDir(dir)
-	if err != nil {
-		t.Fatalf("tarDir error: %v", err)
-	}
+	rc := service.TarDir(dir)
 	defer func() {
 		_ = rc.Close()
 	}()

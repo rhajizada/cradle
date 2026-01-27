@@ -1,9 +1,13 @@
-package service
+package service_test
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/rhajizada/cradle/internal/service"
+)
 
 func TestParsePlatform(t *testing.T) {
-	p, err := parsePlatform("linux/amd64")
+	p, err := service.ParsePlatform("linux/amd64")
 	if err != nil {
 		t.Fatalf("parsePlatform error: %v", err)
 	}
@@ -13,7 +17,7 @@ func TestParsePlatform(t *testing.T) {
 }
 
 func TestParsePlatformInvalid(t *testing.T) {
-	if _, err := parsePlatform("bad"); err == nil {
+	if _, err := service.ParsePlatform("bad"); err == nil {
 		t.Fatalf("expected error for bad platform")
 	}
 }

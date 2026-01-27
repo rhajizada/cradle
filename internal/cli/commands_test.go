@@ -1,4 +1,4 @@
-package cli
+package cli_test
 
 import (
 	"io"
@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/rhajizada/cradle/internal/cli"
 )
 
 func TestNewAppLoadsConfig(t *testing.T) {
@@ -26,37 +28,58 @@ aliases:
 	}
 
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	app, err := newApp(cfgPath, log)
+	app, err := cli.NewApp(cfgPath, log)
 	if err != nil {
 		t.Fatalf("newApp error: %v", err)
 	}
-	if app.cfg == nil || app.svc == nil || app.renderer == nil {
+	if app.Cfg == nil || app.Svc == nil || app.Renderer == nil {
 		t.Fatalf("expected app context to be populated")
 	}
-	_ = app.svc.Close()
+	_ = app.Svc.Close()
 }
 
 func TestCommandRunEConfigError(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	cfgPath := "/nonexistent/config.yaml"
 
-	buildCmd := newBuildCmd(&cfgPath, log)
+	buildCmd := cli.NewBuildCmd(&cfgPath, log)
 	if err := buildCmd.RunE(buildCmd, []string{"all"}); err == nil {
 		t.Fatalf("expected build command to fail with bad config path")
 	}
 
-	lsCmd := newLsCmd(&cfgPath, log)
+	lsCmd := cli.NewLsCmd(&cfgPath, log)
 	if err := lsCmd.RunE(lsCmd, nil); err == nil {
 		t.Fatalf("expected ls command to fail with bad config path")
 	}
 
-	runCmd := newRunCmd(&cfgPath, log)
+	runCmd := cli.NewRunCmd(&cfgPath, log)
 	if err := runCmd.RunE(runCmd, []string{"demo"}); err == nil {
 		t.Fatalf("expected run command to fail with bad config path")
 	}
 
-	stopCmd := newStopCmd(&cfgPath, log)
+	stopCmd := cli.NewStopCmd(&cfgPath, log)
 	if err := stopCmd.RunE(stopCmd, []string{"demo"}); err == nil {
 		t.Fatalf("expected stop command to fail with bad config path")
+	}
+}
+
+func TestCommandFlags(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	cfgPath := ""
+
+	buildCmd := cli.NewBuildCmd(&cfgPath, log)
+	if buildCmd.Flags().Lookup("build") == nil {
+		t.Fatalf("expected build flag on build command")
+	}
+	if buildCmd.Flags().Lookup("pull") == nil {
+		t.Fatalf("expected pull flag on build command")
+	}
+
+	runCmd := cli.NewRunCmd(&cfgPath, log)
+	if runCmd.Flags().Lookup("build") == nil {
+		t.Fatalf("expected build flag on run command")
+	}
+	if runCmd.Flags().Lookup("pull") == nil {
+		t.Fatalf("expected pull flag on run command")
 	}
 }

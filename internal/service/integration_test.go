@@ -1,4 +1,4 @@
-package service
+package service_test
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 
 	"github.com/containerd/errdefs"
 	"github.com/rhajizada/cradle/internal/config"
+	"github.com/rhajizada/cradle/internal/service"
 
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
@@ -27,8 +28,8 @@ func requireDocker(t *testing.T) *client.Client {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	if _, err := cli.Ping(ctx, client.PingOptions{}); err != nil {
-		t.Skipf("docker not available: %v", err)
+	if _, pingErr := cli.Ping(ctx, client.PingOptions{}); pingErr != nil {
+		t.Skipf("docker not available: %v", pingErr)
 	}
 	return cli
 }
@@ -121,7 +122,7 @@ func TestRunReusesContainer(t *testing.T) {
 		},
 	}
 
-	svc, err := New(cfg)
+	svc, err := service.New(cfg)
 	if err != nil {
 		t.Fatalf("service init: %v", err)
 	}
@@ -129,16 +130,20 @@ func TestRunReusesContainer(t *testing.T) {
 
 	defer func() {
 		_, _ = cli.ContainerRemove(context.Background(), name, client.ContainerRemoveOptions{Force: true})
-		_, _ = cli.ImageRemove(context.Background(), "cradle/"+alias+":latest", client.ImageRemoveOptions{Force: true, PruneChildren: true})
+		_, _ = cli.ImageRemove(
+			context.Background(),
+			"cradle/"+alias+":latest",
+			client.ImageRemoveOptions{Force: true, PruneChildren: true},
+		)
 	}()
 
-	first, err := svc.Run(ctx, alias, io.Discard)
+	first, err := svc.Run(ctx, alias, io.Discard, service.ImagePolicyOverrides{})
 	if err != nil {
 		t.Fatalf("first run: %v", err)
 	}
 	waitForExit(t, cli, first.ID)
 
-	second, err := svc.Run(ctx, alias, io.Discard)
+	second, err := svc.Run(ctx, alias, io.Discard, service.ImagePolicyOverrides{})
 	if err != nil {
 		t.Fatalf("second run: %v", err)
 	}
@@ -160,7 +165,7 @@ func TestRunReusesContainer(t *testing.T) {
 		},
 	}
 
-	third, err := svc.Run(ctx, alias, io.Discard)
+	third, err := svc.Run(ctx, alias, io.Discard, service.ImagePolicyOverrides{})
 	if err != nil {
 		t.Fatalf("third run: %v", err)
 	}
@@ -186,7 +191,7 @@ func TestListStatusesIntegration(t *testing.T) {
 		},
 	}
 
-	svc, err := New(cfg)
+	svc, err := service.New(cfg)
 	if err != nil {
 		t.Fatalf("service init: %v", err)
 	}
@@ -233,7 +238,7 @@ func TestStopRunningContainer(t *testing.T) {
 		},
 	}
 
-	svc, err := New(cfg)
+	svc, err := service.New(cfg)
 	if err != nil {
 		t.Fatalf("service init: %v", err)
 	}
@@ -242,13 +247,13 @@ func TestStopRunningContainer(t *testing.T) {
 		_, _ = cli.ContainerRemove(context.Background(), name, client.ContainerRemoveOptions{Force: true})
 	}()
 
-	run, err := svc.Run(context.Background(), "sleep", io.Discard)
+	run, err := svc.Run(context.Background(), "sleep", io.Discard, service.ImagePolicyOverrides{})
 	if err != nil {
 		t.Fatalf("run error: %v", err)
 	}
 
-	if _, err := svc.Stop(context.Background(), "sleep"); err != nil {
-		t.Fatalf("stop error: %v", err)
+	if _, stopErr := svc.Stop(context.Background(), "sleep"); stopErr != nil {
+		t.Fatalf("stop error: %v", stopErr)
 	}
 
 	ctr, err := cli.ContainerInspect(context.Background(), run.ID, client.ContainerInspectOptions{})

@@ -28,61 +28,84 @@ func (s *Service) ListStatuses(ctx context.Context) ([]AliasStatus, error) {
 
 	out := make([]AliasStatus, 0, len(names))
 	for _, name := range names {
-		info, err := s.AliasInfo(name)
+		status, err := s.aliasStatus(ctx, name)
 		if err != nil {
 			return nil, err
 		}
-
-		imageRef := info.Ref
-		if info.Kind == ImageBuild {
-			imageRef = info.Tag
-		}
-
-		imagePresent := false
-		if _, err := s.cli.ImageInspect(ctx, imageRef); err != nil {
-			if !errdefs.IsNotFound(err) {
-				return nil, err
-			}
-		} else {
-			imagePresent = true
-		}
-
-		a := s.cfg.Aliases[name]
-		containerName := a.Run.Name
-		if containerName == "" {
-			containerName = fmt.Sprintf("cradle-%s", name)
-		}
-
-		containerPresent := false
-		containerStatus := "missing"
-		ctr, err := s.cli.ContainerInspect(ctx, containerName, client.ContainerInspectOptions{})
-		if err != nil {
-			if !errdefs.IsNotFound(err) {
-				return nil, err
-			}
-		} else {
-			containerPresent = true
-			if ctr.Container.State != nil {
-				if status := string(ctr.Container.State.Status); status != "" {
-					containerStatus = status
-				} else {
-					containerStatus = "unknown"
-				}
-			} else {
-				containerStatus = "unknown"
-			}
-		}
-
-		out = append(out, AliasStatus{
-			Name:             info.Name,
-			Kind:             info.Kind,
-			ImageRef:         imageRef,
-			ImagePresent:     imagePresent,
-			ContainerName:    containerName,
-			ContainerPresent: containerPresent,
-			ContainerStatus:  containerStatus,
-		})
+		out = append(out, status)
 	}
 
 	return out, nil
+}
+
+func (s *Service) aliasStatus(ctx context.Context, name string) (AliasStatus, error) {
+	info, err := s.AliasInfo(name)
+	if err != nil {
+		return AliasStatus{}, err
+	}
+
+	imageRef := resolveImageRef(info)
+	imagePresent, err := s.imageExists(ctx, imageRef)
+	if err != nil {
+		return AliasStatus{}, err
+	}
+
+	containerName := s.resolveContainerName(name)
+	containerPresent, containerStatus, err := s.containerInfo(ctx, containerName)
+	if err != nil {
+		return AliasStatus{}, err
+	}
+
+	return AliasStatus{
+		Name:             info.Name,
+		Kind:             info.Kind,
+		ImageRef:         imageRef,
+		ImagePresent:     imagePresent,
+		ContainerName:    containerName,
+		ContainerPresent: containerPresent,
+		ContainerStatus:  containerStatus,
+	}, nil
+}
+
+func resolveImageRef(info AliasInfo) string {
+	if info.Kind == ImageBuild {
+		return info.Tag
+	}
+	return info.Ref
+}
+
+func (s *Service) imageExists(ctx context.Context, ref string) (bool, error) {
+	if _, err := s.cli.ImageInspect(ctx, ref); err != nil {
+		if errdefs.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func (s *Service) resolveContainerName(alias string) string {
+	if name := s.cfg.Aliases[alias].Run.Name; name != "" {
+		return name
+	}
+	return fmt.Sprintf("cradle-%s", alias)
+}
+
+func (s *Service) containerInfo(ctx context.Context, name string) (bool, string, error) {
+	ctr, err := s.cli.ContainerInspect(ctx, name, client.ContainerInspectOptions{})
+	if err != nil {
+		if errdefs.IsNotFound(err) {
+			return false, "missing", nil
+		}
+		return false, "", err
+	}
+
+	status := "unknown"
+	if ctr.Container.State != nil {
+		if state := string(ctr.Container.State.Status); state != "" {
+			status = state
+		}
+	}
+
+	return true, status, nil
 }

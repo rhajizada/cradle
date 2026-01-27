@@ -31,7 +31,7 @@ Example:
 
 ```yaml
 run:
-  username: ${USER:-user}
+  user: ${USER:-user}
   uid: ${UID:-1000}
   gid: ${GID:-1000}
 ```
@@ -41,7 +41,7 @@ run:
 Paths are resolved relative to the config file directory:
 
 - `image.build.cwd`
-- `run.mounts[].source` when `type: bind`
+- `run.volumes[].source` when `type: bind`
 
 ## Schema Overview
 
@@ -63,11 +63,22 @@ Exactly one of `pull` or `build` is required.
 
 - `ref` (string, required) - image reference.
   Example: `ref: ubuntu:24.04`
+- `policy` (string, optional) - `always|if_missing|never` (default `always`).
+- `platform` (string, optional) - platform `os/arch[/variant]`.
+- `auth` (object, optional) - registry auth.
+  Example:
+  ```yaml
+  auth:
+    username: ${REGISTRY_USER}
+    password: ${REGISTRY_PASS}
+  ```
+  Auth fields: `username`, `password`, `auth`, `server_address`, `identity_token`, `registry_token`.
 
 #### image.build
 
-- `cwd` (string, required) - build context directory.
+- `cwd` (string, required unless `remote_context` is set) - build context directory.
   Example: `cwd: ./images/devbox`
+- `policy` (string, optional) - `always|if_missing|never` (default `always`).
 - `dockerfile` (string, optional) - defaults to `Dockerfile`.
   Example: `dockerfile: Dockerfile.dev`
 - `args` (map, optional) - build args.
@@ -110,13 +121,56 @@ Exactly one of `pull` or `build` is required.
     - linux/amd64
     - linux/arm64
   ```
+- `tags` (list, optional) - extra image tags (in addition to the alias tag).
+- `suppress_output` (bool, optional) - suppress build output.
+- `remote_context` (string, optional) - build context URL (e.g. git). If set, `cwd` can be empty.
+- `remove` (bool, optional) - remove intermediate containers (default `true`).
+- `force_remove` (bool, optional) - always remove intermediate containers (default `true`).
+- `isolation` (string, optional) - container isolation (platform-specific).
+- `cpuset_cpus` (string, optional) - CPUs in which to allow execution.
+- `cpuset_mems` (string, optional) - memory nodes in which to allow execution.
+- `cpu_shares` (int, optional) - CPU share weighting.
+- `cpu_quota` (int, optional) - CPU quota in microseconds.
+- `cpu_period` (int, optional) - CPU period in microseconds.
+- `memory` (int, optional) - memory limit in bytes.
+- `memory_swap` (int, optional) - total memory limit (memory + swap) in bytes.
+- `cgroup_parent` (string, optional) - cgroup parent.
+- `shm_size` (int, optional) - shared memory size in bytes.
+- `ulimits` (list, optional) - ulimits.
+  Example:
+  ```yaml
+  ulimits:
+    - name: nofile
+      soft: 1024
+      hard: 2048
+  ```
+- `auth_configs` (map, optional) - registry auth configs keyed by host.
+  Example:
+  ```yaml
+  auth_configs:
+    ghcr.io:
+      username: ${GITHUB_USER}
+      password: ${GITHUB_TOKEN}
+  ```
+  Auth fields: `username`, `password`, `auth`, `server_address`, `identity_token`, `registry_token`.
+- `squash` (bool, optional) - squash build layers.
+- `security_opt` (list, optional) - security options.
+- `build_id` (string, optional) - build identifier for cancellation.
+- `outputs` (list, optional) - BuildKit outputs.
+  Example:
+  ```yaml
+  outputs:
+    - type: local
+      attrs:
+        dest: ./out
+  ```
 
 ### run
 
 Identity:
 
-- `username` (string, optional) - informational; used by your image/useradd.
-  Example: `username: ${USER}`
+- `user` (string, optional) - user or user:group string.
+  Example: `user: ${USER}`
 - `uid` (int, optional) - numeric uid; if set, `gid` must also be set.
   Example: `uid: ${UID}`
 - `gid` (int, optional) - numeric gid; if set, `uid` must also be set.
@@ -143,8 +197,17 @@ Identity and hostname:
 
 Process:
 
-- `workdir` (string, optional) - working directory.
-  Example: `workdir: /workspace`
+- `work_dir` (string, optional) - working directory.
+  Example: `work_dir: /workspace`
+- `domain_name` (string, optional) - domain name.
+- `user` (string, optional) - user or user:group string.
+- `group_add` (list, optional) - supplementary groups.
+- `labels` (map, optional) - container labels.
+  Example:
+  ```yaml
+  labels:
+    com.example.role: dev
+  ```
 - `env` (map, optional) - environment variables.
   Example:
   ```yaml
@@ -159,34 +222,49 @@ Process:
 
 Networking:
 
-- `network` (string, optional) - `host|bridge|none|<net>`.
-  Example: `network: host`
+- `network_mode` (string, optional) - `host|bridge|none|<net>`.
+  Example: `network_mode: host`
+- `networks` (map, optional) - attach to named networks with optional aliases.
+  Example:
+  ```yaml
+  networks:
+    default:
+      aliases: ["app"]
+  ```
 - `ports` (list, optional) - port mappings:
   - `"80"`
   - `"8080:80"`
   - `"127.0.0.1:2222:22"`
   - `"[::1]:2222:22"`
+- `expose` (list, optional) - expose container ports without host bindings.
 - `extra_hosts` (list, optional) - extra host entries.
   Example:
   ```yaml
   extra_hosts:
     - "host.docker.internal:host-gateway"
   ```
+- `dns` (list, optional) - DNS servers.
+- `dns_search` (list, optional) - DNS search domains.
+- `dns_opt` (list, optional) - DNS options.
+- `ipc` (string, optional) - IPC namespace.
+- `pid` (string, optional) - PID namespace.
+- `uts` (string, optional) - UTS namespace.
+- `runtime` (string, optional) - container runtime.
 
 Mounts:
 
-- `mounts` (list, optional)
+- `volumes` (list, optional)
   - `type` (string, required) - `bind|volume|tmpfs`
   - `source` (string, required for bind/volume) - path or volume name
   - `target` (string, required) - container path
-  - `readonly` (bool, optional)
+  - `read_only` (bool, optional)
   Example:
   ```yaml
-  mounts:
+  volumes:
     - type: bind
       source: ./src
       target: /workspace
-      readonly: false
+      read_only: false
     - type: volume
       source: npm-cache
       target: /home/node/.npm
@@ -194,10 +272,28 @@ Mounts:
 
 Resources:
 
+Example:
+
+```yaml
+resources:
+  cpus: 2
+  memory: 2g
+```
+
 - `resources.cpus` (number, optional) - CPU count (maps to NanoCPUs).
   Example: `cpus: 2`
+- `resources.cpu_shares` (int, optional) - CPU shares.
+- `resources.cpu_quota` (int, optional) - CPU quota.
+- `resources.cpu_period` (int, optional) - CPU period.
+- `resources.cpuset_cpus` (string, optional) - CPU set.
+- `resources.cpuset_mems` (string, optional) - memory node set.
 - `resources.memory` (string, optional) - memory limit (e.g. `512m`, `2g`).
   Example: `memory: 2g`
+- `resources.memory_reservation` (string, optional) - soft memory limit.
+- `resources.memory_swap` (string, optional) - memory+swap limit.
+- `resources.pids_limit` (int, optional) - PIDs limit.
+- `resources.oom_kill_disable` (bool, optional) - disable OOM killer.
+- `resources.cgroup_parent` (string, optional) - cgroup parent.
 - `resources.shm_size` (string, optional) - shm size.
   Example: `shm_size: 1g`
 
@@ -205,6 +301,39 @@ Other:
 
 - `privileged` (bool, optional) - run privileged.
   Example: `privileged: true`
+- `read_only` (bool, optional) - read-only root filesystem.
+- `cap_add` (list, optional) - add Linux capabilities.
+- `cap_drop` (list, optional) - drop Linux capabilities.
+- `security_opt` (list, optional) - security options.
+- `sysctls` (map, optional) - sysctls.
+  Example:
+  ```yaml
+  sysctls:
+    net.core.somaxconn: "1024"
+  ```
+- `ulimits` (list, optional) - ulimits.
+- `tmpfs` (list, optional) - tmpfs mounts (e.g. `/run:rw,noexec`).
+- `devices` (list, optional) - device mappings (e.g. `/dev/ttyUSB0:/dev/ttyUSB0:rwm`).
+- `stop_signal` (string, optional) - stop signal.
+- `stop_grace_period` (string, optional) - duration before force stop (e.g. `30s`).
+- `healthcheck` (object, optional) - healthcheck configuration.
+  Example:
+  ```yaml
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+    interval: 30s
+    timeout: 5s
+    retries: 3
+  ```
+- `logging` (object, optional) - log driver config (driver/options).
+  Example:
+  ```yaml
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+  ```
 - `restart` (string, optional) - `no|on-failure|always|unless-stopped`.
   Example: `restart: unless-stopped`
 - `platform` (string, optional) - runtime platform `os/arch[/variant]`.
@@ -212,6 +341,5 @@ Other:
 
 ## Notes
 
-- Relative paths in `image.build.cwd` and `run.mounts[].source` are resolved from the config file directory.
-- Set `run.auto_remove: false` to keep containers for reuse across runs.
+- Relative paths in `image.build.cwd` and `run.volumes[].source` are resolved from the config file directory.
 - If you override `run.name`, Cradle uses it to identify the container.

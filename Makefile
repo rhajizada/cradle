@@ -1,3 +1,4 @@
+.DEFAULT_GOAL := help
 VERSION := $(shell \
   tag=$$(git describe --tags --exact-match 2>/dev/null || true); \
   if [ -n "$$tag" ] && echo "$$tag" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$$'; then \

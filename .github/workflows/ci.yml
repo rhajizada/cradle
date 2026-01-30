@@ -54,11 +54,7 @@ jobs:
 
       - name: Check code formatting
         run: |
-          diff="$(go tool gofumpt -d .)"
-          if [ -n "$diff" ]; then
-            echo "$diff"
-            exit 1
-          fi
+          golangci-lint fmt --diff
 
       - name: Static analysis
         run: go vet ./...

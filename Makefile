@@ -53,7 +53,7 @@ lint:
 .PHONY: fmt
 ## fmt: Format source code
 fmt:
-	@go tool gofumpt -w .
+	@golangci-lint fmt
 
 .PHONY: test
 ## test: Run tests

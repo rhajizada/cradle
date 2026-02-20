@@ -79,4 +79,17 @@ func TestRunFingerprintDeterministic(t *testing.T) {
 	if first == third {
 		t.Fatalf("expected fingerprint to change when env changes")
 	}
+
+	run.Env["A"] = "1"
+	run.GPUs = []config.GPURequestSpec{{
+		Count:     config.DeviceCountAll,
+		DeviceIDs: []string{"0"},
+	}}
+	fourth, err := service.RunFingerprint("alias", "name", "img:tag", "imgid", run, true, true, false)
+	if err != nil {
+		t.Fatalf("runFingerprint error: %v", err)
+	}
+	if second == fourth {
+		t.Fatalf("expected fingerprint to change when gpu config changes")
+	}
 }

@@ -67,11 +67,13 @@ Exactly one of `pull` or `build` is required.
 - `platform` (string, optional) - platform `os/arch[/variant]`.
 - `auth` (object, optional) - registry auth.
   Example:
+
   ```yaml
   auth:
     username: ${REGISTRY_USER}
     password: ${REGISTRY_PASS}
   ```
+
   Auth fields: `username`, `password`, `auth`, `server_address`, `identity_token`, `registry_token`.
 
 #### image.build
@@ -83,44 +85,54 @@ Exactly one of `pull` or `build` is required.
   Example: `dockerfile: Dockerfile.dev`
 - `args` (map, optional) - build args.
   Example:
+
   ```yaml
   args:
     UID: ${UID}
     GID: ${GID}
   ```
+
 - `target` (string, optional) - build target stage.
   Example: `target: runtime`
 - `labels` (map, optional) - labels.
   Example:
+
   ```yaml
   labels:
     org.example.role: dev
   ```
+
 - `pull` (bool, optional) - pull parent image.
   Example: `pull: true`
 - `no_cache` (bool, optional) - disable build cache.
   Example: `no_cache: true`
 - `cache_from` (list, optional) - cache sources.
   Example:
+
   ```yaml
   cache_from:
     - ghcr.io/org/app:cache
   ```
+
 - `network` (string, optional) - build network mode.
   Example: `network: host`
 - `extra_hosts` (list, optional) - extra host entries.
   Example:
+
   ```yaml
   extra_hosts:
     - "host.docker.internal:host-gateway"
   ```
+
 - `platforms` (list, optional) - build platforms (e.g. `linux/amd64`).
   Example:
+
   ```yaml
   platforms:
     - linux/amd64
     - linux/arm64
   ```
+
 - `tags` (list, optional) - extra image tags (in addition to the alias tag).
 - `suppress_output` (bool, optional) - suppress build output.
 - `remote_context` (string, optional) - build context URL (e.g. git). If set, `cwd` can be empty.
@@ -138,26 +150,32 @@ Exactly one of `pull` or `build` is required.
 - `shm_size` (int, optional) - shared memory size in bytes.
 - `ulimits` (list, optional) - ulimits.
   Example:
+
   ```yaml
   ulimits:
     - name: nofile
       soft: 1024
       hard: 2048
   ```
+
 - `auth_configs` (map, optional) - registry auth configs keyed by host.
   Example:
+
   ```yaml
   auth_configs:
     ghcr.io:
       username: ${GITHUB_USER}
       password: ${GITHUB_TOKEN}
   ```
+
   Auth fields: `username`, `password`, `auth`, `server_address`, `identity_token`, `registry_token`.
+
 - `squash` (bool, optional) - squash build layers.
 - `security_opt` (list, optional) - security options.
 - `build_id` (string, optional) - build identifier for cancellation.
 - `outputs` (list, optional) - BuildKit outputs.
   Example:
+
   ```yaml
   outputs:
     - type: local
@@ -204,17 +222,21 @@ Process:
 - `group_add` (list, optional) - supplementary groups.
 - `labels` (map, optional) - container labels.
   Example:
+
   ```yaml
   labels:
     com.example.role: dev
   ```
+
 - `env` (map, optional) - environment variables.
   Example:
+
   ```yaml
   env:
     FOO: bar
     NODE_ENV: development
   ```
+
 - `entrypoint` (list, optional) - entrypoint override.
   Example: `entrypoint: ["/bin/bash", "-lc"]`
 - `cmd` (list, optional) - command override.
@@ -226,11 +248,13 @@ Networking:
   Example: `network_mode: host`
 - `networks` (map, optional) - attach to named networks with optional aliases.
   Example:
+
   ```yaml
   networks:
     default:
       aliases: ["app"]
   ```
+
 - `ports` (list, optional) - port mappings:
   - `"80"`
   - `"8080:80"`
@@ -239,10 +263,12 @@ Networking:
 - `expose` (list, optional) - expose container ports without host bindings.
 - `extra_hosts` (list, optional) - extra host entries.
   Example:
+
   ```yaml
   extra_hosts:
     - "host.docker.internal:host-gateway"
   ```
+
 - `dns` (list, optional) - DNS servers.
 - `dns_search` (list, optional) - DNS search domains.
 - `dns_opt` (list, optional) - DNS options.
@@ -258,7 +284,8 @@ Mounts:
   - `source` (string, required for bind/volume) - path or volume name
   - `target` (string, required) - container path
   - `read_only` (bool, optional)
-  Example:
+    Example:
+
   ```yaml
   volumes:
     - type: bind
@@ -307,17 +334,33 @@ Other:
 - `security_opt` (list, optional) - security options.
 - `sysctls` (map, optional) - sysctls.
   Example:
+
   ```yaml
   sysctls:
     net.core.somaxconn: "1024"
   ```
+
 - `ulimits` (list, optional) - ulimits.
 - `tmpfs` (list, optional) - tmpfs mounts (e.g. `/run:rw,noexec`).
 - `devices` (list, optional) - device mappings (e.g. `/dev/ttyUSB0:/dev/ttyUSB0:rwm`).
+- `gpus` (list, optional) - GPU device requests.
+  - `driver` (string, optional) - GPU driver name.
+  - `count` (int|string, optional) - GPU count. Use `all` for all GPUs.
+  - `device_ids` (list, optional) - GPU device IDs (e.g. `"0"`, `"1"`).
+  - `capabilities` (list, optional) - capabilities (cradle always includes `gpu`).
+  - `options` (map, optional) - driver-specific options.
+    Example:
+
+  ```yaml
+  gpus:
+    - count: all
+  ```
+
 - `stop_signal` (string, optional) - stop signal.
 - `stop_grace_period` (string, optional) - duration before force stop (e.g. `30s`).
 - `healthcheck` (object, optional) - healthcheck configuration.
   Example:
+
   ```yaml
   healthcheck:
     test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
@@ -325,8 +368,10 @@ Other:
     timeout: 5s
     retries: 3
   ```
+
 - `logging` (object, optional) - log driver config (driver/options).
   Example:
+
   ```yaml
   logging:
     driver: json-file
@@ -334,6 +379,7 @@ Other:
       max-size: "10m"
       max-file: "3"
   ```
+
 - `restart` (string, optional) - `no|on-failure|always|unless-stopped`.
   Example: `restart: unless-stopped`
 - `platform` (string, optional) - runtime platform `os/arch[/variant]`.

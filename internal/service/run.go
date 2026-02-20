@@ -12,6 +12,7 @@ import (
 	"net/netip"
 	"os"
 	"os/signal"
+	"slices"
 	"sort"
 	"strings"
 	"syscall"
@@ -179,7 +180,7 @@ func BuildContainerCreateOptions(
 	env := MapToEnv(run.Env)
 	userSpec := userSpec(run)
 
-	resources, err := buildResources(run.Resources, run.Ulimits, run.Devices)
+	resources, err := buildResources(run.Resources, run.Ulimits, run.Devices, run.GPUs)
 	if err != nil {
 		return client.ContainerCreateOptions{}, err
 	}
@@ -403,6 +404,7 @@ type runFingerprintRun struct {
 	Ulimits         []config.UlimitSpec     `json:"ulimits"`
 	Tmpfs           []string                `json:"tmpfs"`
 	Devices         []string                `json:"devices"`
+	GPUs            []config.GPURequestSpec `json:"gpus"`
 	GroupAdd        []string                `json:"group_add"`
 	Labels          []envKV                 `json:"labels"`
 	StopSignal      string                  `json:"stop_signal"`
@@ -471,6 +473,7 @@ func buildRunFingerprintRun(run config.RunSpec, tty, stdinOpen, autoRemove bool)
 		Ulimits:         run.Ulimits,
 		Tmpfs:           NormalizeTrimmedSlice(run.Tmpfs),
 		Devices:         NormalizeTrimmedSlice(run.Devices),
+		GPUs:            normalizeGPURequests(run.GPUs),
 		GroupAdd:        NormalizeTrimmedSlice(run.GroupAdd),
 		Labels:          mapToSortedKVs(run.Labels),
 		StopSignal:      run.StopSignal,
@@ -701,6 +704,43 @@ func parseDeviceSpecs(specs []string) ([]container.DeviceMapping, error) {
 	return devices, nil
 }
 
+func parseGPURequests(specs []config.GPURequestSpec) []container.DeviceRequest {
+	requests := make([]container.DeviceRequest, 0, len(specs))
+	for _, spec := range specs {
+		capabilities := normalizeGPUCapabilities(spec.Capabilities)
+		requests = append(requests, container.DeviceRequest{
+			Driver:       strings.TrimSpace(spec.Driver),
+			Count:        int(spec.Count),
+			DeviceIDs:    NormalizeTrimmedSlice(spec.DeviceIDs),
+			Capabilities: [][]string{capabilities},
+			Options:      maps.Clone(spec.Options),
+		})
+	}
+	return requests
+}
+
+func normalizeGPUCapabilities(capabilities []string) []string {
+	normalized := NormalizeTrimmedSlice(capabilities)
+	if slices.Contains(normalized, "gpu") {
+		return normalized
+	}
+	return append(normalized, "gpu")
+}
+
+func normalizeGPURequests(specs []config.GPURequestSpec) []config.GPURequestSpec {
+	normalized := make([]config.GPURequestSpec, 0, len(specs))
+	for _, spec := range specs {
+		normalized = append(normalized, config.GPURequestSpec{
+			Capabilities: normalizeGPUCapabilities(spec.Capabilities),
+			Driver:       strings.TrimSpace(spec.Driver),
+			Count:        spec.Count,
+			DeviceIDs:    NormalizeTrimmedSlice(spec.DeviceIDs),
+			Options:      maps.Clone(spec.Options),
+		})
+	}
+	return normalized
+}
+
 func buildNetworkingConfig(networks map[string]config.NetworkSpec) *mobynet.NetworkingConfig {
 	if len(networks) == 0 {
 		return nil
@@ -741,6 +781,7 @@ func buildResources(
 	spec *config.ResourcesSpec,
 	ulimits []config.UlimitSpec,
 	devices []string,
+	gpus []config.GPURequestSpec,
 ) (container.Resources, error) {
 	resources := container.Resources{}
 	if err := applyResourceSpec(&resources, spec); err != nil {
@@ -755,6 +796,9 @@ func buildResources(
 			return resources, err
 		}
 		resources.Devices = parsed
+	}
+	if len(gpus) > 0 {
+		resources.DeviceRequests = parseGPURequests(gpus)
 	}
 	return resources, nil
 }

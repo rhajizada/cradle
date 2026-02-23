@@ -433,6 +433,73 @@ aliases:
 	}
 }
 
+func TestLoadFileRunGPUs(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	content := `
+version: 1
+aliases:
+  demo:
+    image:
+      pull:
+        ref: ubuntu:24.04
+    run:
+      gpus:
+        - driver: nvidia
+          count: all
+          device_ids: ["0", "1"]
+          capabilities: ["compute", "utility"]
+          options:
+            profile: dev
+`
+	if err := os.WriteFile(cfgPath, []byte(content), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	cfg, err := config.LoadFile(cfgPath)
+	if err != nil {
+		t.Fatalf("LoadFile error: %v", err)
+	}
+
+	run := cfg.Aliases["demo"].Run
+	if len(run.GPUs) != 1 {
+		t.Fatalf("expected single gpu request: %+v", run.GPUs)
+	}
+	gpu := run.GPUs[0]
+	if gpu.Driver != "nvidia" {
+		t.Fatalf("unexpected gpu driver: %q", gpu.Driver)
+	}
+	if gpu.Count != config.DeviceCountAll {
+		t.Fatalf("unexpected gpu count: %d", gpu.Count)
+	}
+	if len(gpu.DeviceIDs) != 2 || gpu.DeviceIDs[0] != "0" || gpu.DeviceIDs[1] != "1" {
+		t.Fatalf("unexpected gpu device_ids: %+v", gpu.DeviceIDs)
+	}
+}
+
+func TestLoadFileRunGPUInvalidCount(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	content := `
+version: 1
+aliases:
+  demo:
+    image:
+      pull:
+        ref: ubuntu:24.04
+    run:
+      gpus:
+        - count: nope
+`
+	if err := os.WriteFile(cfgPath, []byte(content), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	if _, err := config.LoadFile(cfgPath); err == nil {
+		t.Fatalf("expected error for invalid gpu count")
+	}
+}
+
 func assertBuildBasics(t *testing.T, build *config.BuildSpec, dir string) {
 	t.Helper()
 	if build == nil {

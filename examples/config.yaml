@@ -128,6 +128,18 @@ aliases:
         - type: bind
           source: /home
           target: /home
+  nvidia-smi:
+    image:
+      pull:
+        ref: ubuntu
+    run:
+      runtime: nvidia
+      gpus:
+        - count: all
+      cmd: ["nvidia-smi"]
+      tty: true
+      stdin_open: true
+      attach: true
   rocky9:
     image:
       build:
@@ -186,3 +198,28 @@ aliases:
         - type: bind
           source: /home
           target: /home
+  vllm-qwen3:
+    image:
+      pull:
+        policy: if_missing
+        ref: vllm/vllm-openai:cu130-nightly
+    run:
+      ipc: host
+      runtime: nvidia
+      gpus:
+        - count: all
+      cmd:
+        - "--max-model-len"
+        - "40960"
+        - "--gpu-memory-utilization"
+        - "0.5"
+        - "--max-num-seqs"
+        - "1"
+        - "Qwen/Qwen3-0.6B"
+      volumes:
+        - type: bind
+          source: /dev/null
+          target: /etc/ld.so.conf.d/cuda-compat.conf
+        - type: bind
+          source: /scr/huggingface
+          target: /root/.cache/huggingface

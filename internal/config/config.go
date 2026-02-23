@@ -2,10 +2,14 @@ package config
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -93,7 +97,7 @@ type UlimitSpec struct {
 
 type RegistryAuthSpec struct {
 	Username      string `json:"username,omitempty"       yaml:"username,omitempty"`
-	Password      string `json:"password,omitempty"       yaml:"password,omitempty"`
+	Password      string `json:"password,omitempty"       yaml:"password,omitempty"` //nolint:gosec // registry auth config field
 	Auth          string `json:"auth,omitempty"           yaml:"auth,omitempty"`
 	ServerAddress string `json:"server_address,omitempty" yaml:"server_address,omitempty"`
 	IdentityToken string `json:"identity_token,omitempty" yaml:"identity_token,omitempty"`
@@ -151,6 +155,7 @@ type RunSpec struct {
 	Ulimits         []UlimitSpec      `json:"ulimits,omitempty"           yaml:"ulimits,omitempty"`
 	Tmpfs           []string          `json:"tmpfs,omitempty"             yaml:"tmpfs,omitempty"`
 	Devices         []string          `json:"devices,omitempty"           yaml:"devices,omitempty"`
+	GPUs            []GPURequestSpec  `json:"gpus,omitempty"              yaml:"gpus,omitempty"`
 	GroupAdd        []string          `json:"group_add,omitempty"         yaml:"group_add,omitempty"`
 	Labels          map[string]string `json:"labels,omitempty"            yaml:"labels,omitempty"`
 	StopSignal      string            `json:"stop_signal,omitempty"       yaml:"stop_signal,omitempty"`
@@ -160,6 +165,69 @@ type RunSpec struct {
 	Restart         string            `json:"restart,omitempty"           yaml:"restart,omitempty"` // "no", "on-failure", "always", "unless-stopped"
 
 	Platform string `json:"platform,omitempty" yaml:"platform,omitempty"` // optional override, e.g. linux/amd64
+}
+
+type GPURequestSpec struct {
+	Capabilities []string          `json:"capabilities,omitempty" yaml:"capabilities,omitempty"`
+	Driver       string            `json:"driver,omitempty"       yaml:"driver,omitempty"`
+	Count        DeviceCount       `json:"count,omitempty"        yaml:"count,omitempty"`
+	DeviceIDs    []string          `json:"device_ids,omitempty"   yaml:"device_ids,omitempty"`
+	Options      map[string]string `json:"options,omitempty"      yaml:"options,omitempty"`
+}
+
+type DeviceCount int64
+
+const DeviceCountAll DeviceCount = -1
+
+func (c *DeviceCount) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind != yaml.ScalarNode {
+		return fmt.Errorf("invalid count %q: expected scalar value", value.Value)
+	}
+
+	parsed, err := parseDeviceCount(value.Value)
+	if err != nil {
+		return err
+	}
+
+	*c = parsed
+	return nil
+}
+
+func (c *DeviceCount) UnmarshalJSON(data []byte) error {
+	var raw any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	switch value := raw.(type) {
+	case float64:
+		if math.Trunc(value) != value {
+			return fmt.Errorf("invalid value %v, the only value allowed is 'all' or a number", value)
+		}
+		*c = DeviceCount(int64(value))
+		return nil
+	case string:
+		parsed, err := parseDeviceCount(value)
+		if err != nil {
+			return err
+		}
+		*c = parsed
+		return nil
+	default:
+		return errors.New("invalid count: expected number or \"all\"")
+	}
+}
+
+func parseDeviceCount(raw string) (DeviceCount, error) {
+	v := strings.TrimSpace(raw)
+	if strings.EqualFold(v, "all") {
+		return DeviceCountAll, nil
+	}
+	n, err := strconv.ParseInt(v, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid value %q, the only value allowed is 'all' or a number", raw)
+	}
+	return DeviceCount(n), nil
 }
 
 type NetworkSpec struct {

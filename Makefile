@@ -16,19 +16,16 @@ CONFIG_FILE := $(CONFIG_DIR)/config.yaml
 build:
 	go build -ldflags "-s -w -X main.Version=$(VERSION)" -o bin/cradle ./cmd/cradle
 
-
 .PHONY: clean
 ## clean: Remove previous builds
 clean:
 	@rm bin/*
-
 
 .PHONY: mod
 ## mod: Install dependecies
 mod:
 	@go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest \
 	@go mod download
-
 
 .PHONY: install
 ## install: Install cradle
@@ -43,7 +40,6 @@ config:
 	@mkdir -p $(CONFIG_DIR)
 	@cp -R ./examples/. $(CONFIG_DIR)/
 	@echo "Copied example configuration to '$(CONFIG_DIR)'."
-
 
 .PHONY: lint
 ## lint: Lint source code
@@ -71,6 +67,11 @@ coverage:
 run:
 	@go run ./cmd/cradle
 
+.phony: pre-commit
+## pre-commit: Run pre-commit hooks
+pre-commit:
+	@pre-commit run --all-files
+
 .PHONY: schema
 ## schema: Generate configuration schema JSON
 schema:
@@ -80,7 +81,6 @@ schema:
 ## uninstall: Uninstall
 uninstall:
 	@rm $(HOME)/.local/bin/cradle
-
 
 .PHONY: help
 all: help

@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rhajizada/cradle/internal/termutil"
+
 	"golang.org/x/term"
 )
 
@@ -160,7 +162,11 @@ func IsTerminal(out io.Writer) bool {
 	if v, found := os.LookupEnv("NO_COLOR"); found && v != "" {
 		return false
 	}
-	return term.IsTerminal(int(f.Fd()))
+	fd, ok := termutil.Int(f.Fd())
+	if !ok {
+		return false
+	}
+	return term.IsTerminal(fd)
 }
 
 const (

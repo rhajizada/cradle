@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/rhajizada/cradle/internal/config"
+	"github.com/rhajizada/cradle/internal/termutil"
 
 	"github.com/containerd/containerd/v2/pkg/protobuf/proto"
 	controlapi "github.com/moby/buildkit/api/services/control"
@@ -416,7 +417,11 @@ func OutputStyle(out io.Writer) OutStyle {
 	if v, found := os.LookupEnv("NO_COLOR"); found && v != "" {
 		return OutStyle{}
 	}
-	return OutStyle{Color: term.IsTerminal(int(f.Fd()))}
+	fd, ok := termutil.Int(f.Fd())
+	if !ok {
+		return OutStyle{}
+	}
+	return OutStyle{Color: term.IsTerminal(fd)}
 }
 
 func (s OutStyle) Prefixed(text string) string {

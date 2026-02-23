@@ -60,7 +60,16 @@ func TestBuildContainerCreateOptionsComposeFields(t *testing.T) {
 			Soft: 1024,
 			Hard: 2048,
 		}},
-		Devices:     []string{"/dev/null:/dev/null:rwm"},
+		Devices: []string{"/dev/null:/dev/null:rwm"},
+		GPUs: []config.GPURequestSpec{{
+			Driver:       "nvidia",
+			Count:        config.DeviceCountAll,
+			DeviceIDs:    []string{"0", "1"},
+			Capabilities: []string{"compute", "utility"},
+			Options: map[string]string{
+				"profile": "dev",
+			},
+		}},
 		Tmpfs:       []string{"/run:rw,noexec"},
 		ReadOnly:    true,
 		CapAdd:      []string{"NET_ADMIN"},
@@ -147,6 +156,13 @@ func assertHostConfig(t *testing.T, hostCfg *container.HostConfig) {
 	if hostCfg == nil {
 		t.Fatalf("expected host config")
 	}
+	assertHostConfigBasics(t, hostCfg)
+	assertHostConfigResources(t, hostCfg)
+	assertHostConfigNetworking(t, hostCfg)
+}
+
+func assertHostConfigBasics(t *testing.T, hostCfg *container.HostConfig) {
+	t.Helper()
 	if !hostCfg.ReadonlyRootfs {
 		t.Fatalf("expected readonly rootfs")
 	}
@@ -162,6 +178,10 @@ func assertHostConfig(t *testing.T, hostCfg *container.HostConfig) {
 	if hostCfg.LogConfig.Type != "json-file" {
 		t.Fatalf("unexpected log config: %+v", hostCfg.LogConfig)
 	}
+}
+
+func assertHostConfigResources(t *testing.T, hostCfg *container.HostConfig) {
+	t.Helper()
 	if hostCfg.Resources.NanoCPUs != 2_000_000_000 {
 		t.Fatalf("unexpected NanoCPUs: %d", hostCfg.Resources.NanoCPUs)
 	}
@@ -171,9 +191,32 @@ func assertHostConfig(t *testing.T, hostCfg *container.HostConfig) {
 	if len(hostCfg.Resources.Devices) != 1 {
 		t.Fatalf("unexpected devices: %+v", hostCfg.Resources.Devices)
 	}
+	if len(hostCfg.Resources.DeviceRequests) != 1 {
+		t.Fatalf("unexpected device requests: %+v", hostCfg.Resources.DeviceRequests)
+	}
+	request := hostCfg.Resources.DeviceRequests[0]
+	if request.Driver != "nvidia" {
+		t.Fatalf("unexpected gpu driver: %q", request.Driver)
+	}
+	if request.Count != -1 {
+		t.Fatalf("unexpected gpu count: %d", request.Count)
+	}
+	if len(request.DeviceIDs) != 2 || request.DeviceIDs[0] != "0" || request.DeviceIDs[1] != "1" {
+		t.Fatalf("unexpected gpu device ids: %+v", request.DeviceIDs)
+	}
+	if len(request.Capabilities) != 1 || len(request.Capabilities[0]) != 3 {
+		t.Fatalf("unexpected gpu capabilities: %+v", request.Capabilities)
+	}
+	if request.Capabilities[0][2] != "gpu" {
+		t.Fatalf("expected gpu capability, got: %+v", request.Capabilities)
+	}
 	if _, ok := hostCfg.Tmpfs["/run"]; !ok {
 		t.Fatalf("expected tmpfs entry")
 	}
+}
+
+func assertHostConfigNetworking(t *testing.T, hostCfg *container.HostConfig) {
+	t.Helper()
 	if len(hostCfg.DNS) != 1 || hostCfg.DNS[0] != netip.MustParseAddr("1.1.1.1") {
 		t.Fatalf("unexpected dns: %+v", hostCfg.DNS)
 	}

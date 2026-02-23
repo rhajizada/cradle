@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"reflect"
 
 	"github.com/google/jsonschema-go/jsonschema"
 
@@ -11,7 +12,13 @@ import (
 )
 
 func main() {
-	s, err := jsonschema.For[config.Config](nil)
+	opts := &jsonschema.ForOptions{
+		TypeSchemas: map[reflect.Type]*jsonschema.Schema{
+			reflect.TypeOf(config.DeviceCount(0)): deviceCountSchema(),
+		},
+	}
+
+	s, err := jsonschema.For[config.Config](opts)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -22,5 +29,14 @@ func main() {
 	enc.SetIndent("", "  ")
 	if encodeErr := enc.Encode(s); encodeErr != nil {
 		log.Fatal(encodeErr)
+	}
+}
+
+func deviceCountSchema() *jsonschema.Schema {
+	return &jsonschema.Schema{
+		OneOf: []*jsonschema.Schema{
+			{Type: "integer"},
+			{Type: "string", Enum: []any{"all"}},
+		},
 	}
 }

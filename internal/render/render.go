@@ -11,6 +11,8 @@ import (
 	"github.com/charmbracelet/lipgloss/table"
 	"golang.org/x/term"
 
+	"github.com/rhajizada/cradle/internal/termutil"
+
 	"github.com/rhajizada/cradle/internal/service"
 )
 
@@ -125,7 +127,10 @@ func terminalWidth(w io.Writer) int {
 	if !ok {
 		return 0
 	}
-	fd := int(f.Fd())
+	fd, ok := termutil.Int(f.Fd())
+	if !ok {
+		return 0
+	}
 	if !term.IsTerminal(fd) {
 		return 0
 	}

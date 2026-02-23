@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/rhajizada/cradle/internal/config"
+	"github.com/rhajizada/cradle/internal/termutil"
 
 	"github.com/containerd/errdefs"
 	"github.com/docker/go-units"
@@ -260,18 +261,24 @@ func (s *Service) AttachAndWait(ctx context.Context, opts AttachOptions) error {
 	}
 	defer attached.Close()
 
-	if opts.TTY && term.IsTerminal(int(opts.Stdin.Fd())) {
-		oldState, setRawErr := term.MakeRaw(int(opts.Stdin.Fd()))
+	stdinFD := 0
+	hasStdinFD := opts.Stdin != nil
+	if hasStdinFD {
+		stdinFD, hasStdinFD = termutil.Int(opts.Stdin.Fd())
+	}
+
+	if opts.TTY && hasStdinFD && term.IsTerminal(stdinFD) {
+		oldState, setRawErr := term.MakeRaw(stdinFD)
 		if setRawErr == nil {
 			defer func() {
-				_ = term.Restore(int(opts.Stdin.Fd()), oldState)
+				_ = term.Restore(stdinFD, oldState)
 			}()
 		}
 	}
 
-	if opts.TTY {
+	if opts.TTY && hasStdinFD {
 		resize := func() {
-			w, h, sizeErr := term.GetSize(int(opts.Stdin.Fd()))
+			w, h, sizeErr := term.GetSize(stdinFD)
 			if sizeErr != nil || w < 0 || h < 0 {
 				return
 			}

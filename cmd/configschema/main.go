@@ -14,7 +14,7 @@ import (
 func main() {
 	opts := &jsonschema.ForOptions{
 		TypeSchemas: map[reflect.Type]*jsonschema.Schema{
-			reflect.TypeOf(config.DeviceCount(0)): deviceCountSchema(),
+			reflect.TypeFor[config.DeviceCount](): deviceCountSchema(),
 		},
 	}
 

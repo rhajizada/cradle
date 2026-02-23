@@ -1,9 +1,13 @@
-package termutil
+package termutil_test
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/rhajizada/cradle/internal/termutil"
+)
 
 func TestIntValidFD(t *testing.T) {
-	got, ok := Int(uintptr(42))
+	got, ok := termutil.Int(uintptr(42))
 	if !ok {
 		t.Fatalf("expected valid fd conversion")
 	}
@@ -13,8 +17,8 @@ func TestIntValidFD(t *testing.T) {
 }
 
 func TestIntOverflowFD(t *testing.T) {
-	overflow := uintptr(maxInt) + 1
-	_, ok := Int(overflow)
+	overflow := uintptr(termutil.MaxInt) + 1
+	_, ok := termutil.Int(overflow)
 	if ok {
 		t.Fatalf("expected overflow fd conversion to fail")
 	}

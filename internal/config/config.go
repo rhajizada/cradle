@@ -97,7 +97,7 @@ type UlimitSpec struct {
 
 type RegistryAuthSpec struct {
 	Username      string `json:"username,omitempty"       yaml:"username,omitempty"`
-	Password      string `json:"password,omitempty"       yaml:"password,omitempty"` //nolint:gosec // registry auth config field
+	Password      string `json:"password,omitempty"       yaml:"password,omitempty"`
 	Auth          string `json:"auth,omitempty"           yaml:"auth,omitempty"`
 	ServerAddress string `json:"server_address,omitempty" yaml:"server_address,omitempty"`
 	IdentityToken string `json:"identity_token,omitempty" yaml:"identity_token,omitempty"`

@@ -69,14 +69,14 @@ jobs:
         if: always()
 
       - name: Run coverage
-        if: needs.env.outputs.release == 'true'
+        if: github.ref == 'refs/heads/main'
         run: |
           PKGS=$(go list ./... | grep -vE '/(docs|vendor|mocks|testdata|internal/repository)(/|$)')
           go tool gotestsum -- -coverprofile=coverage.out $PKGS
 
       - name: Parse coverage
         id: coverage
-        if: needs.env.outputs.release == 'true'
+        if: github.ref == 'refs/heads/main
         run: |
           coverage="$(go tool cover -func=coverage.out | awk '/^total:/{print $3}')"
           coverage_value="${coverage%\%}"
@@ -97,7 +97,7 @@ jobs:
           echo "color=$color" >> "$GITHUB_OUTPUT"
 
       - name: Update badge
-        if: needs.env.outputs.release == 'true'
+        if: github.ref == 'refs/heads/main
         env:
           SIGNUM_BADGE_ID: ${{ vars.SIGNUM_BADGE_ID }}
           SIGNUM_BADGE_TOKEN: ${{ secrets.SIGNUM_BADGE_TOKEN }}

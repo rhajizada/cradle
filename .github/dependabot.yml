@@ -1,0 +1,47 @@
+version: 2
+
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    groups:
+      charm:
+        patterns:
+          - "github.com/charmbracelet/*"
+      containerd:
+        patterns:
+          - "github.com/containerd/*"
+      docker:
+        patterns:
+          - "github.com/docker/*"
+          - "github.com/moby/*"
+          - "github.com/opencontainers/*"
+      cli:
+        patterns:
+          - "github.com/spf13/*"
+      golang:
+        patterns:
+          - "github.com/google/*"
+          - "google.golang.org/*"
+          - "go.opentelemetry.io/*"
+          - "gotest.tools/*"
+          - "golang.org/x/*"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "05:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+      include: "scope"

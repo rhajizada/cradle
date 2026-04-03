@@ -67,7 +67,7 @@ func PullOptionsFromSpec(spec *config.PullSpec) (client.ImagePullOptions, error)
 	if spec.Auth == nil {
 		return options, nil
 	}
-	authJSON, err := json.Marshal(registryAuthConfig(*spec.Auth))
+	authJSON, err := json.Marshal(registryAuthPayload(*spec.Auth))
 	if err != nil {
 		return options, err
 	}
@@ -278,6 +278,29 @@ func registryAuthConfig(spec config.RegistryAuthSpec) registry.AuthConfig {
 		IdentityToken: spec.IdentityToken,
 		RegistryToken: spec.RegistryToken,
 	}
+}
+
+func registryAuthPayload(spec config.RegistryAuthSpec) map[string]string {
+	payload := map[string]string{}
+	if spec.Username != "" {
+		payload["username"] = spec.Username
+	}
+	if spec.Password != "" {
+		payload["password"] = spec.Password
+	}
+	if spec.Auth != "" {
+		payload["auth"] = spec.Auth
+	}
+	if spec.ServerAddress != "" {
+		payload["serveraddress"] = spec.ServerAddress
+	}
+	if spec.IdentityToken != "" {
+		payload["identitytoken"] = spec.IdentityToken
+	}
+	if spec.RegistryToken != "" {
+		payload["registrytoken"] = spec.RegistryToken
+	}
+	return payload
 }
 
 func buildOutputs(specs []config.BuildOutputSpec) []client.ImageBuildOutput {

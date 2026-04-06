@@ -1,7 +1,7 @@
 # cradle
 
 [![CI](https://github.com/rhajizada/cradle/actions/workflows/ci.yml/badge.svg)](https://github.com/rhajizada/cradle/actions/workflows/ci.yml)
-![Go](https://img.shields.io/badge/Go-1.25-blue.svg)
+![Go](https://img.shields.io/badge/Go-1.26-blue.svg)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=fff)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 ![coverage](https://signum.rhajizada.dev/api/badges/41b351aa-7fbd-4f4e-a3ae-f46875c940fc)
@@ -54,12 +54,12 @@ Run:
 
 ## Commands
 
-| Command        | Description                              |
-| -------------- | ---------------------------------------- |
+| Command        | Description                                            |
+| -------------- | ------------------------------------------------------ |
 | `build`        | Pull or build images (use `--build`/`--pull` to force) |
-| `ls`           | List aliases with image/container status             |
-| `run <alias>`  | Run alias (use `--build`/`--pull` to force)           |
-| `stop <alias>` | Stop alias container                                 |
+| `ls`           | List aliases with image/container status               |
+| `run <alias>`  | Run alias (use `--build`/`--pull` to force)            |
+| `stop <alias>` | Stop alias container                                   |
 
 ## Docs & References
 

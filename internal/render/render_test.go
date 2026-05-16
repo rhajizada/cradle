@@ -13,7 +13,7 @@ import (
 
 func TestListStatusesTable(t *testing.T) {
 	var buf bytes.Buffer
-	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	log := slog.New(slog.DiscardHandler)
 	r := render.New(log, &buf)
 
 	items := []service.AliasStatus{
@@ -87,7 +87,7 @@ func TestListStatusesTable(t *testing.T) {
 }
 
 func TestRunStartStopAndBuildStart(_ *testing.T) {
-	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	log := slog.New(slog.DiscardHandler)
 	r := render.New(log, io.Discard)
 
 	r.RunStart("id")

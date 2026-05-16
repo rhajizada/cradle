@@ -9,7 +9,7 @@ import (
 )
 
 func TestRootCommandWiring(t *testing.T) {
-	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	log := slog.New(slog.DiscardHandler)
 	root := cli.NewRootCmd("test", log)
 
 	if root.Use != "cradle" {
@@ -29,7 +29,7 @@ func TestRootCommandWiring(t *testing.T) {
 }
 
 func TestCommandBuilders(t *testing.T) {
-	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	log := slog.New(slog.DiscardHandler)
 	cfg := ""
 
 	if got := cli.NewBuildCmd(&cfg, log).Use; got == "" {
@@ -47,7 +47,7 @@ func TestCommandBuilders(t *testing.T) {
 }
 
 func TestRootCommandVersionAndHelp(t *testing.T) {
-	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	log := slog.New(slog.DiscardHandler)
 	root := cli.NewRootCmd("test", log)
 	root.SetOut(io.Discard)
 	root.SetErr(io.Discard)

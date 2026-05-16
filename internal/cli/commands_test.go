@@ -1,7 +1,6 @@
 package cli_test
 
 import (
-	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -27,7 +26,7 @@ aliases:
 		t.Fatalf("write config: %v", err)
 	}
 
-	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	log := slog.New(slog.DiscardHandler)
 	app, err := cli.NewApp(cfgPath, log)
 	if err != nil {
 		t.Fatalf("newApp error: %v", err)
@@ -39,7 +38,7 @@ aliases:
 }
 
 func TestCommandRunEConfigError(t *testing.T) {
-	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	log := slog.New(slog.DiscardHandler)
 	cfgPath := "/nonexistent/config.yaml"
 
 	buildCmd := cli.NewBuildCmd(&cfgPath, log)
@@ -64,7 +63,7 @@ func TestCommandRunEConfigError(t *testing.T) {
 }
 
 func TestCommandFlags(t *testing.T) {
-	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	log := slog.New(slog.DiscardHandler)
 	cfgPath := ""
 
 	buildCmd := cli.NewBuildCmd(&cfgPath, log)

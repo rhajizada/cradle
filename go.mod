@@ -1,12 +1,12 @@
 module github.com/rhajizada/cradle
 
-go 1.26.2
+go 1.26.3
 
 tool gotest.tools/gotestsum
 
 require (
 	github.com/charmbracelet/lipgloss v1.1.0
-	github.com/containerd/containerd/v2 v2.3.0
+	github.com/containerd/containerd/v2 v2.3.1
 	github.com/containerd/errdefs v1.0.0
 	github.com/docker/go-units v0.5.0
 	github.com/google/jsonschema-go v0.4.3

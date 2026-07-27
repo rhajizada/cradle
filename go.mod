@@ -10,7 +10,7 @@ require (
 	github.com/containerd/errdefs v1.0.0
 	github.com/docker/go-units v0.5.0
 	github.com/google/jsonschema-go v0.4.3
-	github.com/moby/buildkit v0.31.0
+	github.com/moby/buildkit v0.31.2
 	github.com/moby/moby/api v1.55.0
 	github.com/moby/moby/client v0.5.0
 	github.com/opencontainers/image-spec v1.1.1
